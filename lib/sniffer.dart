@@ -5,11 +5,26 @@ import 'util/logging.dart';
 
 RegExp matchLogLine = new RegExp(
   // r"([^ ])*\S+([^ ])*\S+([^ ]*)\S+([^ ]*)\S+([^ ]*).*",
-  r"([^ ]*)\S+([^ ]*)\S+([^ ]*)\S+.*", //\S+([^ ]*)
+  // r"([^ ]*)\S+([^ ]*)\S+([^ ]*)\S+.*", //\S+([^ ]*)
+  // r"(?P.*?) (?P.*?) (?P.*?) \[(?P.*?)(?= ) (?P.*?)\] \"(?P.*?) (?P<path>.*?)(?P HTTP/.*)?\" (?P.*?) (?P.*?) \"(?P.*?)\" \"(?P.*?)\" (?P.*?) (?P.*?) (?P.*)",
+  // r"(?<ip>.*?) (?<remote_log_name>.*?) (?<userid>.*?) \[(?<date>.*?)(?= ) (?<timezone>.*?)\] \"(?<request_method>.*?) (?<path>.*?)(?<request_version> HTTP/.*)?\" (?<status>.*?) (?<length>.*?) \"(?<referrer>.*?)\" \"(?<user_agent>.*?)\" (?<session_id>.*?) (?<generation_time_micro>.*?) (?<virtual_host>.*)",
+  r"(?<ip>.*?) (?<remote_log_name>.*?) (?<userid>.*?) \[(?<date>.*?)(?= ) (?<timezone>.*?)\] "
+          r'"' +
+      r"(?<method>.*?) (?<path>.*?)(?<request_version> HTTP/.*)?" +
+      r'" ' +
+      r"(?<status>.*?) (?<length>.*?) " +
+      r'"' +
+      r"(?<referrer>.*?)" +
+      r'" ' +
+      r"(?<agent>.*?)" +
+      r'" ' +
+      r"(?<session_id>.*?) (?<generation_time_micro>.*?) (?<virtual_host>.*)",
   caseSensitive: false,
   multiLine: false,
 );
 
+/*
+r"(?P<ip>.*?) (?P<remote_log_name>.*?) (?P<userid>.*?) \[(?P<date>.*?)(?= ) (?P<timezone>.*?)\] \"(?P<request_method>.*?) (?P<path>.*?)(?P<request_version> HTTP/.*)?\" (?P<status>.*?) (?P<length>.*?) \"(?P<referrer>.*?)\" \"(?P<user_agent>.*?)\" (?P<session_id>.*?) (?P<generation_time_micro>.*?) (?P<virtual_host>.*)"*/
 const sensitiveCountLimit = [
   {'text': '', 'triggerCount': 3}
 ];
@@ -30,35 +45,22 @@ Future sniffLog(String logPath) async {
   await contentStream.transform(Utf8Decoder()).transform(LineSplitter()).listen(
       (String line) {
     logger.fine("read:$lineNo: $line");
-    Iterable<RegExpMatch> words = matchLogLine.allMatches(line);
+    RegExpMatch match = matchLogLine.firstMatch(line);
+    // Iterable<RegExpMatch> words = matchLogLine.allMatches(line);
 
-    if (words == null) {
-      logger.severe("Found null!");
+    if (match.groupNames == null) {
+      logger.severe("nothing matched: ${match.toString()}");
       return;
     }
-    // List<String> words = line.split(new RegExp(r"[^ ]*\s+[^ ]*"));
-
-    String ip, logDate = '';
-    int index = 0;
-    for (var match in words) {
-      if (match == null) {
-        index += 1;
-        continue;
-      }
-      logger.fine("match: ${match.groupCount} | (${match.group(1)})");
-
-      switch (index) {
-        case 0:
-          ip = match.group(1);
-          break;
-        case 3:
-          logDate = match.group(1);
-          break;
-      }
-      logger.fine("ip: $ip, date: $logDate");
-      index += 1;
-    }
-
+    String ip, logDate, method, path, agent = '';
+    logger.fine("match: ${match.groupNames.toString()} ");
+    ip = match.namedGroup('ip');
+    logDate = match.namedGroup('date');
+    method = match.namedGroup('method');
+    path = match.namedGroup('path');
+    agent = match.namedGroup('agent');
+    logger.fine(
+        "matched: ip: $ip, date: $logDate method: $method path: $path agent: $agent");
     // logger.fine("words: ${words.length}");
   }, onDone: () {
     logger.info("completed $logPath");
