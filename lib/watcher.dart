@@ -1,3 +1,22 @@
-///TODO make a watcher for all domain logs in a directory
+import 'package:watcher/watcher.dart';
+import 'package:path/path.dart' as p;
+import 'util/logging.dart';
+
+import './sniffer.dart';
+
+/// make a watcher for all domain logs in a directory
 ///
 // watch /etc/apache2/logs/domlogs/*
+watchDestination(String path) async {
+  logger.info("watching $path");
+  var watcher = DirectoryWatcher(p.absolute(path));
+  watcher.events.listen((event) async {
+    logger.fine("path: $path event: $event.toString()");
+    final eventPath = event.path;
+    if (eventPath.endsWith('~')) {
+      return;
+    }
+    //if file pattern
+    await sniffLog(eventPath);
+  });
+}

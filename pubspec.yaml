@@ -2,6 +2,8 @@ name: synagie5
 environment:
   sdk: ">=2.0.0-dev <3.0.0"
 dependencies:
-  logger: ^0.6.0
+  logging: ^0.11.3+2
   dson: any
+  watcher: ^0.9.7+13
+  colorize: any
 dev_dependencies:
