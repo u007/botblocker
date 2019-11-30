@@ -24,7 +24,8 @@ RegExp matchLogLine = new RegExp(
 /*
 r"(?P<ip>.*?) (?P<remote_log_name>.*?) (?P<userid>.*?) \[(?P<date>.*?)(?= ) (?P<timezone>.*?)\] \"(?P<request_method>.*?) (?P<path>.*?)(?P<request_version> HTTP/.*)?\" (?P<status>.*?) (?P<length>.*?) \"(?P<referrer>.*?)\" \"(?P<user_agent>.*?)\" (?P<session_id>.*?) (?P<generation_time_micro>.*?) (?P<virtual_host>.*)"*/
 const sensitiveCountLimit = [
-  {'text': '', 'triggerCount': 3}
+  {'text': 'wp-login.php', 'triggerCount': 5},
+  {'text': '!wp-config.php', 'triggerCount': 1},
 ];
 
 /// read log file from last line, otherwise from beginnning and find for bad url access
@@ -44,14 +45,13 @@ Future sniffLog(String logPath) async {
       (String line) {
     // logger.fine("read:$lineNo: $line");
     RegExpMatch match = matchLogLine.firstMatch(line);
-    // Iterable<RegExpMatch> words = matchLogLine.allMatches(line);
-
     if (match == null) {
-      logger.severe("nothing matched on line: $line");
+      logger.severe("nothing matched on line: $lineNo: $line");
+      lineNo += 1;
       return;
     }
     String ip, logDate, method, path, agent = '';
-    logger.fine("match: ${match.groupNames.toString()} ");
+    // logger.fine("match: ${match.groupNames.toString()} ");
     ip = match.namedGroup('ip');
     logDate = match.namedGroup('date');
     method = match.namedGroup('method');
@@ -62,10 +62,11 @@ Future sniffLog(String logPath) async {
     DateFormat format = new DateFormat("dd/MMM/yyyy:hh:mm:ss");
     DateTime date = format.parse(logDate);
     logger.fine(
-        "matched: ip: $ip, date: $date method: $method path: $path agent: $agent");
+        "matched($lineNo) ip: $ip, date: $date method: $method path: $path agent: $agent");
+    lineNo += 1;
     // logger.fine("words: ${words.length}");
   }, onDone: () {
-    logger.info("completed $logPath");
+    logger.info("completed $lineNo line(s) on $logPath");
   }, onError: (e) {
     logger.severe("Error: ${e.toString()}");
   });
