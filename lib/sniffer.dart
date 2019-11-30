@@ -2,23 +2,21 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:convert';
 import 'util/logging.dart';
+import 'package:intl/intl.dart';
 
 RegExp matchLogLine = new RegExp(
-  // r"([^ ])*\S+([^ ])*\S+([^ ]*)\S+([^ ]*)\S+([^ ]*).*",
-  // r"([^ ]*)\S+([^ ]*)\S+([^ ]*)\S+.*", //\S+([^ ]*)
-  // r"(?P.*?) (?P.*?) (?P.*?) \[(?P.*?)(?= ) (?P.*?)\] \"(?P.*?) (?P<path>.*?)(?P HTTP/.*)?\" (?P.*?) (?P.*?) \"(?P.*?)\" \"(?P.*?)\" (?P.*?) (?P.*?) (?P.*)",
   // r"(?<ip>.*?) (?<remote_log_name>.*?) (?<userid>.*?) \[(?<date>.*?)(?= ) (?<timezone>.*?)\] \"(?<request_method>.*?) (?<path>.*?)(?<request_version> HTTP/.*)?\" (?<status>.*?) (?<length>.*?) \"(?<referrer>.*?)\" \"(?<user_agent>.*?)\" (?<session_id>.*?) (?<generation_time_micro>.*?) (?<virtual_host>.*)",
   r"(?<ip>.*?) (?<remote_log_name>.*?) (?<userid>.*?) \[(?<date>.*?)(?= ) (?<timezone>.*?)\] "
           r'"' +
-      r"(?<method>.*?) (?<path>.*?)(?<request_version> HTTP/.*)?" +
+      r"(?<method>.*?) (?<path>.*?)(?<request_version> HTTP/.*)?" + // quoted
       r'" ' +
       r"(?<status>.*?) (?<length>.*?) " +
       r'"' +
-      r"(?<referrer>.*?)" +
-      r'" ' +
-      r"(?<agent>.*?)" +
-      r'" ' +
-      r"(?<session_id>.*?) (?<generation_time_micro>.*?) (?<virtual_host>.*)",
+      r"(?<referrer>.*?)" + // quoted
+      r'" "' +
+      r"(?<agent>.*?)" + // quoted
+      r'"',
+  // r"(?<session_id>.*?) (?<generation_time_micro>.*?) (?<virtual_host>.*)",
   caseSensitive: false,
   multiLine: false,
 );
@@ -44,12 +42,12 @@ Future sniffLog(String logPath) async {
   int lineNo = 1;
   await contentStream.transform(Utf8Decoder()).transform(LineSplitter()).listen(
       (String line) {
-    logger.fine("read:$lineNo: $line");
+    // logger.fine("read:$lineNo: $line");
     RegExpMatch match = matchLogLine.firstMatch(line);
     // Iterable<RegExpMatch> words = matchLogLine.allMatches(line);
 
-    if (match.groupNames == null) {
-      logger.severe("nothing matched: ${match.toString()}");
+    if (match == null) {
+      logger.severe("nothing matched on line: $line");
       return;
     }
     String ip, logDate, method, path, agent = '';
@@ -59,8 +57,12 @@ Future sniffLog(String logPath) async {
     method = match.namedGroup('method');
     path = match.namedGroup('path');
     agent = match.namedGroup('agent');
+
+    //30/Nov/2019:11:33:25
+    DateFormat format = new DateFormat("dd/MMM/yyyy:hh:mm:ss");
+    DateTime date = format.parse(logDate);
     logger.fine(
-        "matched: ip: $ip, date: $logDate method: $method path: $path agent: $agent");
+        "matched: ip: $ip, date: $date method: $method path: $path agent: $agent");
     // logger.fine("words: ${words.length}");
   }, onDone: () {
     logger.info("completed $logPath");

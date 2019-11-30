@@ -6,4 +6,5 @@ dependencies:
   dson: any
   watcher: ^0.9.7+13
   colorize: any
+  intl: ^0.16.0
 dev_dependencies:
