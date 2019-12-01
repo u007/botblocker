@@ -3,7 +3,6 @@ import 'package:path/path.dart';
 import 'dart:convert'; // for the utf8.encode method
 import 'dart:async';
 import 'dart:io';
-import 'dart:convert';
 import './abstract.dart';
 import '../util/logging.dart';
 
@@ -26,8 +25,7 @@ class FileSnifferHandler extends SnifferHandler {
     File file = new File(filePath);
     if (!await file.exists()) {
       file.createSync(recursive: true);
-      file.writeAsStringSync('{"lastLine": 0, "lastText": null, "v": 1}\n',
-          mode: FileMode.append);
+      file.writeAsStringSync('{"lastLine": 0, "lastText": null, "v": 1}');
     }
     return file;
   }

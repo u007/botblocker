@@ -31,18 +31,55 @@ const sensitiveCountLimit = [
 
 Future sniffLog(String logPath, SnifferHandler sniffHandler) async {
   if (FileSystemEntity.typeSync(logPath) == FileSystemEntityType.notFound) {
-    throw ("${logPath} missing");
+    throw FileSystemException(logPath);
   }
 
   Map<String, dynamic> logConfig = await sniffHandler.getLogFileConfig(logPath);
-  //TODO read from last line
+
+  sniffLogwithConfig(logPath, logConfig, sniffHandler);
+}
+
+sniffLogwithConfig(String logPath, Map<String, dynamic> logConfig,
+    SnifferHandler sniffHandler) async {
+  final int lastLine = logConfig['lastLine'] as int;
+  final String lastText = logConfig['lastText'] as String;
+
+  logger.info("path: $logPath, lastLine: $lastLine: $lastText");
   var file = File(logPath);
+  //TODO cancel stream for better performance
   // Read file
   // var contents = StringBuffer();
   var contentStream = file.openRead();
   int lineNo = 1;
-  await contentStream.transform(Utf8Decoder()).transform(LineSplitter()).listen(
-      (String line) {
+  int newLine = 0;
+  String readLastLine = "";
+  bool cancelThis = false;
+  var reader = contentStream.transform(Utf8Decoder()).transform(LineSplitter());
+  await reader.listen((String line) {
+    if (lineNo < lastLine || cancelThis) {
+      lineNo += 1;
+      logger.finer("Skipping $lineNo to $lastLine");
+      return;
+    }
+    if (lineNo == lastLine) {
+      if (lastText != null) {
+        if (!line.startsWith(lastText)) {
+          logger.severe(
+              "Line($lastLine) mismatch, expecting '$lastLine', found: $line");
+          cancelThis = true;
+          // reader.cancel();
+          // reader.cancel();
+          //rerun from start
+          logConfig['lastLine'] = 0;
+          logConfig['lastText'] = null;
+          sniffLogwithConfig(logPath, logConfig, sniffHandler);
+          return;
+        }
+
+        lineNo += 1;
+        return; // start with next line
+      }
+    }
     // logger.fine("read:$lineNo: $line");
     RegExpMatch match = matchLogLine.firstMatch(line);
     if (match == null) {
@@ -63,11 +100,25 @@ Future sniffLog(String logPath, SnifferHandler sniffHandler) async {
     DateTime date = format.parse(logDate);
     logger.fine(
         "matched($lineNo) ip: $ip, date: $date method: $method path: $path agent: $agent");
+
+    readLastLine = line;
+
+    newLine += 1;
+
     lineNo += 1;
     // logger.fine("words: ${words.length}");
   }, onDone: () {
-    logger.info("completed $lineNo line(s) on $logPath");
+    if (!cancelThis) {
+      if (newLine > 0) {
+        logger.info(
+            "completed $lineNo line(s) with $newLine new lines on $logPath");
+      } else {
+        logger.info("nothing changed on $logPath");
+      }
+
+      sniffHandler.saveLogFileConfig(logPath, lineNo - 1, readLastLine);
+    }
   }, onError: (e) {
     logger.severe("Error: ${e.toString()}");
-  });
+  }, cancelOnError: true);
 }

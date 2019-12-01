@@ -13,3 +13,5 @@ pubspec.lock
 doc/api/
 bin/*.exe
 logs/*
+.*.swp*
+data/
