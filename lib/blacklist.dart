@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'dart:async';
-// import 'dart:convert';
+import 'dart:convert';
 import 'package:intl/intl.dart';
 // import 'package:process_run/process_run.dart';
 // import 'package:process_run/shell.dart';
@@ -20,7 +20,22 @@ storeAndBlockIP(String ip, DateTime date, String violatedPath) async {
   return storeViolation(ip, date, violatedPath);
 }
 
+loadViolation(String ip) async {
+  String filePath = "$violationPath/$ip.log";
+  File file = new File(filePath);
+  if (!await file.exists()) {
+    file.createSync(recursive: true);
+    file.writeAsStringSync('{"count": 1, "v": 1}\n', mode: FileMode.append);
+  }
+
+  String content = file.readAsStringSync();
+  List<String> lines = content.split("\n");
+  Map<String, dynamic> data = jsonDecode(lines[0]);
+  return data;
+}
+
 storeViolation(String ip, DateTime date, String violatedPath) async {
+  //date specific path
   String datePath = DateFormat("yyyy-MM-dd").format(date);
   String filePath = "$violationPath/$datePath/$ip.log";
 
@@ -29,9 +44,20 @@ storeViolation(String ip, DateTime date, String violatedPath) async {
   if (!await file.exists()) {
     file.createSync(recursive: true);
   }
-  //TODO store date and violation
-  //TODO also store in root for ip
   file.writeAsStringSync(violatedPath + "\n", mode: FileMode.append);
+
+  String isoDateTime = date.toIso8601String();
+  // write not general path for entire ip
+  // store first line as json
+  filePath = "$violationPath/$ip.log";
+  file = new File(filePath);
+  if (!await file.exists()) {
+    file.createSync(recursive: true);
+    file.writeAsStringSync('{"count": 1}\n', mode: FileMode.append);
+  }
+
+  file.writeAsStringSync(isoDateTime + ':' + violatedPath + "\n",
+      mode: FileMode.append);
 }
 
 banIP(String ip) async {
