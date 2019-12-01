@@ -64,7 +64,7 @@ sniffLogwithConfig(String logPath, Map<String, dynamic> logConfig,
     if (lineNo == lastLine) {
       if (lastText != null) {
         if (!line.startsWith(lastText)) {
-          logger.severe(
+          logger.info(
               "Line($lastLine) mismatch, expecting '$lastLine', found: $line");
           cancelThis = true;
           // reader.cancel();
@@ -75,11 +75,13 @@ sniffLogwithConfig(String logPath, Map<String, dynamic> logConfig,
           sniffLogwithConfig(logPath, logConfig, sniffHandler);
           return;
         }
-
-        lineNo += 1;
-        return; // start with next line
       }
+      logger.finer("Skipping last line $lineNo to $lastLine");
+      lineNo += 1;
+      return; // start with next line
     }
+
+    logger.finer("Reading $lineNo: $line");
     // logger.fine("read:$lineNo: $line");
     RegExpMatch match = matchLogLine.firstMatch(line);
     if (match == null) {
@@ -109,14 +111,21 @@ sniffLogwithConfig(String logPath, Map<String, dynamic> logConfig,
     // logger.fine("words: ${words.length}");
   }, onDone: () {
     if (!cancelThis) {
+      if (lineNo < lastLine) {
+        logger.info("log file shorted than last line $lineNo vs $lastLine");
+        cancelThis = true;
+        logConfig['lastLine'] = 0;
+        logConfig['lastText'] = null;
+        sniffLogwithConfig(logPath, logConfig, sniffHandler);
+        return;
+      }
       if (newLine > 0) {
         logger.info(
             "completed $lineNo line(s) with $newLine new lines on $logPath");
+        sniffHandler.saveLogFileConfig(logPath, lineNo - 1, readLastLine);
       } else {
         logger.info("nothing changed on $logPath");
       }
-
-      sniffHandler.saveLogFileConfig(logPath, lineNo - 1, readLastLine);
     }
   }, onError: (e) {
     logger.severe("Error: ${e.toString()}");

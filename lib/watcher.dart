@@ -15,7 +15,9 @@ watchDestination(String path) async {
   watcher.events.listen((event) async {
     logger.fine("path: $path event: ${event.toString()}");
     final eventPath = event.path;
-    if (eventPath.endsWith('~') || eventPath.endsWith(".swp")) {
+    if (eventPath.endsWith('~') ||
+        eventPath.endsWith(".swp") ||
+        eventPath.endsWith(".swpx")) {
       return;
     }
     //if file pattern
