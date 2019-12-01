@@ -7,10 +7,18 @@ import 'package:intl/intl.dart';
 import 'package:process_run/which.dart';
 // import "package:async/async.dart";
 // import 'package:path/path.dart';
-import 'util/loging.dart';
+import 'util/logging.dart';
 
 final violationPath = ".data/";
 var csfPath = "";
+
+storeAndBlockIP(String ip, DateTime date, String violatedPath) async {
+  if (!isBannedIP(ip)) {
+    await banIP(ip);
+  }
+
+  return storeViolation(ip, date, violatedPath);
+}
 
 storeViolation(String ip, DateTime date, String violatedPath) async {
   String datePath = DateFormat("yyyy-MM-dd").format(date);
@@ -21,15 +29,46 @@ storeViolation(String ip, DateTime date, String violatedPath) async {
   if (!await file.exists()) {
     file.createSync(recursive: true);
   }
-
+  //TODO store date and violation
+  //TODO also store in root for ip
   file.writeAsStringSync(violatedPath + "\n", mode: FileMode.append);
+}
+
+banIP(String ip) async {
+  if (await isWhiteListedIP(ip)) {
+    throw "Is whitelisted ip $ip";
+  }
+  await csfRun(['-d', ip]); //to remove from block csf -dr ip
 }
 
 isBannedIP(String ip) async {
   var res = await csfRun(['-g', ip]);
-  //TODO check output
+  if (res.indexOf('csf.allow:') >= 0) {
+    logger.fine("is csf.allow $ip");
+    return false;
+  }
+
+  if (res.indexOf('csf.deny:') >= 0) {
+    logger.fine("is csf.deny $ip");
+    return true;
+  }
 
   return true;
+}
+
+isWhiteListedIP(String ip) async {
+  var res = await csfRun(['-g', ip]);
+  if (res.indexOf('csf.allow:') >= 0) {
+    logger.fine("is csf.allow $ip");
+    return true;
+  }
+
+  if (res.indexOf('csf.ignore:') >= 0) {
+    logger.fine("is csf.ignore $ip");
+    return true;
+  }
+
+  return false;
 }
 
 Future<String> csfRun(
@@ -44,7 +83,7 @@ Future<String> csfRun(
   }
 
   Process.run(csfPath, args).then((ProcessResult results) {
-    logger.Fine(results.stdout);
+    logger.fine(results.stdout);
     c.complete(results.stdout);
   });
   return c.future;
