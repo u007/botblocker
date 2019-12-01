@@ -1,10 +1,9 @@
 import 'package:logging/logging.dart';
 import 'package:colorize/colorize.dart';
 
-//
-// Logger.root.level = Level.ALL;
 final logger = Logger('default');
 
+/// setup logging, alows future addition of other type of logger like graylog
 setupLogger() {
   Logger.root.level = Level.FINE; // defaults to Level.INFO
   Logger.root.onRecord.listen((record) {

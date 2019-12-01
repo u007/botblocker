@@ -2,6 +2,7 @@ import 'package:watcher/watcher.dart';
 import 'package:path/path.dart' as p;
 import 'util/logging.dart';
 
+import './sniffer/file.dart';
 import './sniffer.dart';
 
 /// make a watcher for all domain logs in a directory
@@ -17,6 +18,6 @@ watchDestination(String path) async {
       return;
     }
     //if file pattern
-    await sniffLog(eventPath);
+    await sniffLog(eventPath, FileSnifferHandler());
   });
 }

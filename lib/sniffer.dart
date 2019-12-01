@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:convert';
 import 'util/logging.dart';
 import 'package:intl/intl.dart';
+import './sniffer/abstract.dart';
 
 RegExp matchLogLine = new RegExp(
   // r"(?<ip>.*?) (?<remote_log_name>.*?) (?<userid>.*?) \[(?<date>.*?)(?= ) (?<timezone>.*?)\] \"(?<request_method>.*?) (?<path>.*?)(?<request_version> HTTP/.*)?\" (?<status>.*?) (?<length>.*?) \"(?<referrer>.*?)\" \"(?<user_agent>.*?)\" (?<session_id>.*?) (?<generation_time_micro>.*?) (?<virtual_host>.*)",
@@ -28,13 +29,12 @@ const sensitiveCountLimit = [
   {'text': '!wp-config.php', 'triggerCount': 1},
 ];
 
-/// read log file from last line, otherwise from beginnning and find for bad url access
-/// and allow whitelisting of ip avoidance and also blacklist ip when needed via csf
-Future sniffLog(String logPath) async {
+Future sniffLog(String logPath, SnifferHandler sniffHandler) async {
   if (FileSystemEntity.typeSync(logPath) == FileSystemEntityType.notFound) {
     throw ("${logPath} missing");
   }
 
+  Map<String, dynamic> logConfig = await sniffHandler.getLogFileConfig(logPath);
   //TODO read from last line
   var file = File(logPath);
   // Read file
