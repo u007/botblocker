@@ -11,7 +11,7 @@ class CSFBlackList extends BlackListHandler {
   final String violationPath;
   String csfPath = "";
 
-  CSFBlackList({this.violationPath = ".data/", this.csfPath = ""});
+  CSFBlackList({this.violationPath = ".data/ip", this.csfPath = ""});
 
   storeAndBlockIP(String ip, DateTime date, String violatedPath) async {
     if (!isBannedIP(ip)) {

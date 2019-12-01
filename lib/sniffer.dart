@@ -103,6 +103,8 @@ sniffLogwithConfig(String logPath, Map<String, dynamic> logConfig,
     logger.fine(
         "matched($lineNo) ip: $ip, date: $date method: $method path: $path agent: $agent");
 
+    //TODO check if path matches any of the banned list and violated within the hour
+
     readLastLine = line;
 
     newLine += 1;
@@ -112,7 +114,7 @@ sniffLogwithConfig(String logPath, Map<String, dynamic> logConfig,
   }, onDone: () {
     if (!cancelThis) {
       if (lineNo < lastLine) {
-        logger.info("log file shorted than last line $lineNo vs $lastLine");
+        logger.info("log file shorter than last line $lineNo vs $lastLine");
         cancelThis = true;
         logConfig['lastLine'] = 0;
         logConfig['lastText'] = null;
