@@ -42,7 +42,11 @@ class FileSnifferHandler extends SnifferHandler {
       {version = 1}) async {
     File file = await prepareLogFileConfig(path);
 
-    final data = {"lastLine": lineNo, "lastText": lastLine, "v": version};
+    final data = {
+      "lastLine": lineNo,
+      "lastText": lastLine,
+      "v": version,
+    };
     final content = jsonEncode(data);
     file.writeAsStringSync(content);
 

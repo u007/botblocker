@@ -103,6 +103,7 @@ sniffLogwithConfig(String logPath, Map<String, dynamic> logConfig,
     logger.fine(
         "matched($lineNo) ip: $ip, date: $date method: $method path: $path agent: $agent");
 
+    if (line.contains('wp-login.php')) {}
     //TODO check if path matches any of the banned list and violated within the hour
 
     readLastLine = line;
