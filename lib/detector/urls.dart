@@ -10,5 +10,5 @@ class ViolationRule {
 }
 
 final Map<String, List<ViolationRule>> violationConfig = {
-  'apache.log': [ViolationRule('/wp-login.php')]
+  'apache.log': [ViolationRule('/wp-login.php', count: 5)]
 };

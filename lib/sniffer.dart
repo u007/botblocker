@@ -1,8 +1,12 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:convert';
+import 'package:synagie5/blacklist/csf.dart';
+
+import 'detector/urls.dart';
 import 'util/logging.dart';
 import 'package:intl/intl.dart';
+import 'package:path/path.dart';
 import './sniffer/abstract.dart';
 
 RegExp matchLogLine = new RegExp(
@@ -46,6 +50,8 @@ sniffLogwithConfig(String logPath, Map<String, dynamic> logConfig,
 
   logger.info("path: $logPath, lastLine: $lastLine: $lastText");
   var file = File(logPath);
+  String logFileName = basename(logPath);
+  List<ViolationRule> rules = violationConfig[logFileName];
   //TODO cancel stream for better performance
   // Read file
   // var contents = StringBuffer();
@@ -55,7 +61,7 @@ sniffLogwithConfig(String logPath, Map<String, dynamic> logConfig,
   String readLastLine = "";
   bool cancelThis = false;
   var reader = contentStream.transform(Utf8Decoder()).transform(LineSplitter());
-  await reader.listen((String line) {
+  await reader.listen((String line) async {
     if (lineNo < lastLine || cancelThis) {
       lineNo += 1;
       logger.finer("Skipping $lineNo to $lastLine");
@@ -101,10 +107,47 @@ sniffLogwithConfig(String logPath, Map<String, dynamic> logConfig,
     DateFormat format = new DateFormat("dd/MMM/yyyy:hh:mm:ss");
     DateTime date = format.parse(logDate);
     logger.fine(
-        "matched($lineNo) ip: $ip, date: $date method: $method path: $path agent: $agent");
+        "accessLog($lineNo) ip: $ip, date: $date method: $method path: $path agent: $agent");
 
-    if (line.contains('wp-login.php')) {}
     //TODO check if path matches any of the banned list and violated within the hour
+
+    for (ViolationRule rule in rules) {
+      bool bFound = false;
+      if (rule.exact && rule.url == rule.url) {
+        logger.fine(
+            "accessLog($lineNo) ip: $ip, date: $date method: $method found exact: $rule");
+        bFound = true;
+      } else if (!rule.exact) {
+        if (path.contains(rule.url)) {
+          bFound = true;
+        }
+      }
+      if (!bFound) continue;
+
+      CSFBlackList bHandler = CSFBlackList();
+      if (await bHandler.isBannedIP(ip)) {
+        logger.info("accessLog($lineNo) banned ip: $ip, skipping");
+        continue;
+      }
+
+      if (await bHandler.isWhiteListedIP(ip)) {
+        logger.info("accessLog($lineNo) whitelisted ip: $ip, skipping");
+        continue;
+      }
+
+      if (rule.count <= 1) {
+        await bHandler.banIP(ip);
+      } else {
+        logger.info(
+            "accessLog($lineNo) ip: $ip, date: $date method: $method found $rule");
+        Map<String, dynamic> ipConfig = await bHandler.loadIP(ip);
+        if (ipConfig['count'] + 1 >= rule.count) {
+          await bHandler.banIP(ip);
+        }
+      }
+
+      bHan
+    }
 
     readLastLine = line;
 
