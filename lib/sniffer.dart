@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:convert';
-import 'package:synagie5/blacklist/csf.dart';
+import 'package:botblocker/blacklist/csf.dart';
 
 import 'detector/urls.dart';
 import 'util/logging.dart';

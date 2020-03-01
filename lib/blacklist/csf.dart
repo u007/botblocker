@@ -3,7 +3,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:intl/intl.dart';
 import 'package:process_run/which.dart';
-import 'package:synagie5/util/date.dart';
+import 'package:botblocker/util/date.dart';
 import '../util/logging.dart';
 import './abstract.dart';
 
@@ -13,6 +13,33 @@ class CSFBlackList extends BlackListHandler {
   String csfPath = "";
   int version = 0;
   CSFBlackList({this.violationPath = ".data/ip", this.csfPath = ""});
+
+  resetIP(String ip, {String logName: null}) async {
+    String filePath = "$violationPath/$ip.log";
+    File file = new File(filePath);
+    if (!await file.exists()) {
+      return;
+    }
+
+    if (logName == null) {
+      file.deleteSync();
+      return;
+    }
+
+    String content = file.readAsStringSync();
+    List<String> newLines = [];
+    List<String> lines = content.split("\n");
+    for (int c = 1; c < lines.length; c++) {
+      String line = lines[c];
+      Map<String, dynamic> data = jsonDecode(line);
+      ViolationInfo info = ViolationInfo()..fromMap(data);
+      if (info.logName != logName) {
+        newLines.add(line);
+      }
+    }
+
+    file.writeAsStringSync(newLines.join("\n"));
+  }
 
   storeAndBlockIP(
       String ip, DateTime date, String logName, String violatedPath) async {
@@ -65,8 +92,7 @@ class CSFBlackList extends BlackListHandler {
   storeViolation(String ip, DateTime date, String logName, String violatedPath,
       {count: 1}) async {
     //date specific path
-    String datePath = DateFormat("yyyy-MM-dd").format(date);
-    String filePath = "$violationPath/$datePath/$ip.log";
+    String filePath = "$violationPath/$ip.log";
 
     //creates dir and file if not exists
     File file = new File(filePath);
@@ -101,6 +127,13 @@ class CSFBlackList extends BlackListHandler {
     }
 
     file.writeAsStringSync(lines.join("\n"));
+  }
+
+  unBanIP(String ip) async {
+    if (await isWhiteListedIP(ip)) {
+      throw "Is whitelisted ip $ip";
+    }
+    await csfRun(['-dr', ip]); //to remove from block csf -dr ip
   }
 
   banIP(String ip) async {
