@@ -113,7 +113,7 @@ sniffLogwithConfig(String logPath, Map<String, dynamic> logConfig,
 
     for (ViolationRule rule in rules) {
       bool bFound = false;
-      if (rule.exact && rule.url == rule.url) {
+      if (rule.exact && rule.url == path) {
         logger.fine(
             "accessLog($lineNo) ip: $ip, date: $date method: $method found exact: $rule");
         bFound = true;
@@ -137,6 +137,7 @@ sniffLogwithConfig(String logPath, Map<String, dynamic> logConfig,
 
       if (rule.count <= 1) {
         await bHandler.banIP(ip);
+        await bHandler.storeAndBlockIP(ip, date, logFileName, path);
       } else {
         logger.info(
             "accessLog($lineNo) ip: $ip, date: $date method: $method found $rule");
@@ -145,8 +146,6 @@ sniffLogwithConfig(String logPath, Map<String, dynamic> logConfig,
           await bHandler.banIP(ip);
         }
       }
-
-      bHan
     }
 
     readLastLine = line;
