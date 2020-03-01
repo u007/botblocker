@@ -20,7 +20,7 @@ class FileSnifferHandler extends SnifferHandler {
     var bytes = utf8.encode(logFile.path); // data being hashed
     var digest = sha1.convert(bytes);
 
-    String filePath = "$configPath/${digest.toString()}-$name.log";
+    String filePath = "$configPath/${digest.toString()}-$name.json";
     logger.fine("opening logconfig $filePath");
     File file = new File(filePath);
     if (!await file.exists()) {
@@ -51,5 +51,20 @@ class FileSnifferHandler extends SnifferHandler {
     file.writeAsStringSync(content);
 
     return file.path;
+  }
+
+  resetLogFileConfig(String path) async {
+    File logFile = File(path);
+    String name = basename(logFile.path);
+
+    var bytes = utf8.encode(logFile.path); // data being hashed
+    var digest = sha1.convert(bytes);
+
+    String filePath = "$configPath/${digest.toString()}-$name.json";
+    logger.fine("resetting logconfig $filePath");
+    File file = new File(filePath);
+    if (await file.exists()) {
+      file.deleteSync();
+    }
   }
 }

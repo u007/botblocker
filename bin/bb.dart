@@ -1,4 +1,5 @@
 import 'package:botblocker/blacklist/csf.dart';
+import 'package:botblocker/sniffer/file.dart';
 
 import '../lib/watcher.dart';
 import '../lib/util/logging.dart';
@@ -8,12 +9,21 @@ main(List<String> args) async {
   // await watchDestination('/etc/apache2/logs/domlogs/');
   String cmd = args.length > 0 ? args[0] : '';
   switch (cmd) {
-    case 'reset':
+    case 'reset-ip':
       Map<String, dynamic> data = expectArgs(
-          args, ['ip', 'logName:optional'], 'reset', 'Reset an ip record');
+          args, ['ip', 'logName:optional'], 'reset-ip', 'Reset an ip record');
       output("Resetting IP ${data['ip']} logName: ${data['logName']}...");
       await CSFBlackList().resetIP(data['ip'], logName: data['logName']);
-      output("IP ${data['ip']} logName: ${data['logName']} reset done.");
+      output("IP ${data['ip']} logName: ${data['logName']}: reset done.");
+      break;
+
+    case 'reset-log':
+      Map<String, dynamic> data =
+          expectArgs(args, ['path'], 'reset-log', 'Reset an log file record');
+      output("Resetting log ${data['ip']} logName: ${data['logName']}...");
+      await FileSnifferHandler().resetLogFileConfig(data['path']);
+      output(
+          "Resetting log ${data['ip']} logName: ${data['logName']}: reset done.");
       break;
     case 'unblock':
       Map<String, dynamic> data =
@@ -30,7 +40,14 @@ main(List<String> args) async {
       await CSFBlackList().banIP(data['ip']);
       output("IP ${data['ip']} has been blocked!");
       break;
+
+    case 'help':
+      output("bb.exe reset-ip / reset-log / block / unblock");
+      break;
     default:
+      if (args.length > 0) {
+        throw "Unknown command ${args[0]}, please use 'help' for available commands";
+      }
       await watchDestination('./logs');
   }
   ;
