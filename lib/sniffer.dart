@@ -141,10 +141,20 @@ sniffLogwithConfig(String logPath, Map<String, dynamic> logConfig,
       } else {
         logger.info(
             "accessLog($lineNo) ip: $ip, date: $date method: $method found $rule");
-        Map<String, dynamic> ipConfig = await bHandler.loadIP(ip);
-        if (ipConfig['count'] + 1 >= rule.count) {
+        ViolationInfo info =
+            await bHandler.loadIPViolation(ip, logFileName, path);
+        int violatedCount = await info.countViolation(rule.duration) + 1;
+        if (violatedCount >= rule.count) {
+          logger.info(
+              "accessLog($lineNo) ip: $ip, date: $date method: $method violated count ${rule.count}, violatedCount: $violatedCount - banning!");
           await bHandler.banIP(ip);
+        } else {
+          logger.fine(
+              "accessLog($lineNo) ip: $ip, date: $date method: $method violated count ${rule.count}, violatedCount: $violatedCount - counting...");
         }
+
+        await bHandler.storeViolation(ip, date, logFileName, path,
+            count: violatedCount);
       }
     }
 
