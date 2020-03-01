@@ -51,7 +51,10 @@ sniffLogwithConfig(String logPath, Map<String, dynamic> logConfig,
   logger.info("path: $logPath, lastLine: $lastLine: $lastText");
   var file = File(logPath);
   String logFileName = basename(logPath);
-  List<ViolationRule> rules = violationConfig[logFileName];
+  List<ViolationRule> rules = violationConfig.containsKey(logFileName)
+      ? violationConfig[logFileName]
+      : [];
+  rules.addAll(violationConfig.containsKey('*') ? violationConfig['*'] : []);
   //TODO cancel stream for better performance
   // Read file
   // var contents = StringBuffer();
