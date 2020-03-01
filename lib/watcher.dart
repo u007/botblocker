@@ -10,8 +10,9 @@ import './sniffer.dart';
 ///
 // watch /etc/apache2/logs/domlogs/*
 watchDestination(String path) async {
-  logger.info("watching $path");
-  var watcher = DirectoryWatcher(p.absolute(path));
+  String absolutePath = p.absolute(path);
+  logger.info("watching2 $absolutePath");
+  var watcher = DirectoryWatcher(absolutePath);
   watcher.events.listen((event) async {
     logger.fine("path: $path event: ${event.toString()}");
     final eventPath = event.path;

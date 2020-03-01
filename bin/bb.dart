@@ -18,13 +18,14 @@ main(List<String> args) async {
       break;
 
     case 'reset-log':
-      Map<String, dynamic> data =
-          expectArgs(args, ['path'], 'reset-log', 'Reset an log file record');
-      output("Resetting log ${data['ip']} logName: ${data['logName']}...");
+      Map<String, dynamic> data = expectArgs(args, ['path'], 'reset-log',
+          'Reset an log file record.\nExample bb.exe reset-log log/xyz.com.\nExample #2: bb.exe reset-log /var/log/httpd/xyz.com.log');
+      output("Resetting log ${data['path']}...");
       await FileSnifferHandler().resetLogFileConfig(data['path']);
       output(
           "Resetting log ${data['ip']} logName: ${data['logName']}: reset done.");
       break;
+
     case 'unblock':
       Map<String, dynamic> data =
           expectArgs(args, ['ip'], 'unblock', 'Unblock an ip');
@@ -41,14 +42,22 @@ main(List<String> args) async {
       output("IP ${data['ip']} has been blocked!");
       break;
 
-    case 'help':
-      output("bb.exe reset-ip / reset-log / block / unblock");
+    case 'watch':
+      Map<String, dynamic> data = expectArgs(args, ['path'], 'watch',
+          'watch a directory.\nExample: bb.exe watch logs\nExample#2: bb.exe watch /c/logs\nExample#3: bb.exe watch /var/logs/httpd/domain.log');
+      output("Watching ${data['path']}...");
+      await watchDestination(data['path']);
       break;
+
+    case 'help':
+      output("bb.exe reset-ip / reset-log / block / unblock / watch");
+      break;
+
     default:
       if (args.length > 0) {
         throw "Unknown command ${args[0]}, please use 'help' for available commands";
       }
-      await watchDestination('./logs');
+      await watchDestination('logs');
   }
   ;
 }
@@ -72,7 +81,7 @@ Map<String, dynamic> expectArgs(
     }
     minLength = c + offset + 1;
   }
-  output("Expecting minLength: $minLength, args: ${args.length}");
+  // output("Expecting minLength: $minLength, args: ${args.length}");
   if (args.length < minLength) {
     List<String> out = [prefix];
 

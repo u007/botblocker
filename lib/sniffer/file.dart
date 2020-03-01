@@ -14,14 +14,14 @@ class FileSnifferHandler extends SnifferHandler {
   FileSnifferHandler({this.configPath: './data'});
 
   Future<File> prepareLogFileConfig(String path) async {
-    File logFile = File(path);
+    File logFile = File(path).absolute;
     String name = basename(logFile.path);
 
     var bytes = utf8.encode(logFile.path); // data being hashed
     var digest = sha1.convert(bytes);
 
     String filePath = "$configPath/${digest.toString()}-$name.json";
-    logger.fine("opening logconfig $filePath");
+    logger.fine("opening logconfig $filePath | actual: ${logFile.path}");
     File file = new File(filePath);
     if (!await file.exists()) {
       file.createSync(recursive: true);
@@ -54,14 +54,14 @@ class FileSnifferHandler extends SnifferHandler {
   }
 
   resetLogFileConfig(String path) async {
-    File logFile = File(path);
+    File logFile = File(path).absolute;
     String name = basename(logFile.path);
 
     var bytes = utf8.encode(logFile.path); // data being hashed
     var digest = sha1.convert(bytes);
 
     String filePath = "$configPath/${digest.toString()}-$name.json";
-    logger.fine("resetting logconfig $filePath");
+    logger.fine("resetting logconfig $filePath, actual: ${logFile.path}");
     File file = new File(filePath);
     if (await file.exists()) {
       file.deleteSync();

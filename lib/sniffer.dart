@@ -40,7 +40,7 @@ Future sniffLog(String logPath, SnifferHandler sniffHandler) async {
 
   Map<String, dynamic> logConfig = await sniffHandler.getLogFileConfig(logPath);
 
-  sniffLogwithConfig(logPath, logConfig, sniffHandler);
+  return sniffLogwithConfig(logPath, logConfig, sniffHandler);
 }
 
 sniffLogwithConfig(String logPath, Map<String, dynamic> logConfig,
