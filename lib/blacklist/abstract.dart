@@ -1,9 +1,9 @@
 abstract class BlackListHandler {
-  storeAndBlockIP(
-      String ip, DateTime date, String logName, String violatedPath);
+  storeAndBlockIP(String ip, DateTime date, String logName, String violatedPath,
+      {String reason = ''});
   loadIP(String ip);
   storeViolation(String ip, DateTime date, String logName, String violatedPath);
-  banIP(String ip);
+  banIP(String ip, {String reason: ''});
   isBannedIP(String ip);
   isWhiteListedIP(String ip);
 }

@@ -41,10 +41,10 @@ class CSFBlackList extends BlackListHandler {
     file.writeAsStringSync(newLines.join("\n"));
   }
 
-  storeAndBlockIP(
-      String ip, DateTime date, String logName, String violatedPath) async {
+  storeAndBlockIP(String ip, DateTime date, String logName, String violatedPath,
+      {String reason = ''}) async {
     if (!isBannedIP(ip)) {
-      await banIP(ip);
+      await banIP(ip, reason: reason);
     }
 
     return storeViolation(ip, date, logName, violatedPath);
@@ -136,11 +136,11 @@ class CSFBlackList extends BlackListHandler {
     await csfRun(['-dr', ip]); //to remove from block csf -dr ip
   }
 
-  banIP(String ip) async {
+  banIP(String ip, {String reason = ''}) async {
     if (await isWhiteListedIP(ip)) {
       throw "Is whitelisted ip $ip";
     }
-    await csfRun(['-d', ip]); //to remove from block csf -dr ip
+    await csfRun(['-d', ip, reason]); //to remove from block csf -dr ip
   }
 
   isBannedIP(String ip) async {

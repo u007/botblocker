@@ -38,7 +38,7 @@ main(List<String> args) async {
       Map<String, dynamic> data =
           expectArgs(args, ['ip'], 'block', 'Block an ip');
       output("UBlocking IP ${data['ip']}...");
-      await CSFBlackList().banIP(data['ip']);
+      await CSFBlackList().banIP(data['ip'], reason: 'botblock manual');
       output("IP ${data['ip']} has been blocked!");
       break;
 
