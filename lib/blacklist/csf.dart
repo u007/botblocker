@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'dart:async';
 import 'dart:convert';
-import 'package:intl/intl.dart';
+import 'package:botblocker/blacklist/ip_file.dart';
 import 'package:process_run/which.dart';
 import 'package:botblocker/util/date.dart';
 import '../util/logging.dart';
@@ -10,9 +10,12 @@ import './abstract.dart';
 /// Blacklist handling via CSF firewall
 class CSFBlackList extends BlackListHandler {
   final String violationPath;
+  IPFileSaver ipSaver;
   String csfPath = "";
   int version = 0;
-  CSFBlackList({this.violationPath = ".data/ip", this.csfPath = ""});
+  CSFBlackList({this.violationPath = ".data/ip", this.csfPath = ""}) {
+    ipSaver = IPFileSaver();
+  }
 
   resetIP(String ip, {String logName: null}) async {
     String filePath = "$violationPath/$ip.log";
@@ -129,10 +132,20 @@ class CSFBlackList extends BlackListHandler {
     file.writeAsStringSync(lines.join("\n"));
   }
 
+  unBanAll() async {
+    List<BanIPInfo> list = await ipSaver.load();
+    for (int c = 0; c < list.length; c++) {
+      BanIPInfo ipInfo = list[c];
+      await unBanIP(ipInfo.ip);
+    }
+  }
+
   unBanIP(String ip) async {
     if (await isWhiteListedIP(ip)) {
       throw "Is whitelisted ip $ip";
     }
+
+    await ipSaver.storeUnban(ip);
     await csfRun(['-dr', ip]); //to remove from block csf -dr ip
   }
 
@@ -140,6 +153,8 @@ class CSFBlackList extends BlackListHandler {
     if (await isWhiteListedIP(ip)) {
       throw "Is whitelisted ip $ip";
     }
+
+    await ipSaver.storeBan(ip, getNow(), reason: reason);
     await csfRun(['-d', ip, reason]); //to remove from block csf -dr ip
   }
 

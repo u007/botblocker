@@ -34,6 +34,18 @@ main(List<String> args) async {
       output("IP ${data['ip']} has been unblock.");
       break;
 
+    case 'undo-blocks':
+      Map<String, dynamic> data = expectArgs(
+          args, ['yes'], 'unblock', 'Unblock all ip, passing 1 to confirm');
+      output("Unblocking all IP yes? ${data['yes']}...");
+      if (data['yes'] == '1') {
+        await CSFBlackList().unBanAll();
+        output("Unblocked all IP.");
+      } else {
+        output("Does nothing.");
+      }
+      break;
+
     case 'block':
       Map<String, dynamic> data =
           expectArgs(args, ['ip'], 'block', 'Block an ip');
@@ -50,7 +62,8 @@ main(List<String> args) async {
       break;
 
     case 'help':
-      output("bb.exe reset-ip / reset-log / block / unblock / watch");
+      output(
+          "bb.exe reset-ip / reset-log / block / unblock / watch / undo-blocks");
       break;
 
     default:
