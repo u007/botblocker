@@ -82,7 +82,8 @@ sniffLogwithConfig(String logPath, Map<String, dynamic> logConfig,
       lineNo = lastLine; //next line is next line
     }
   }
-  logger.info("listening line...");
+
+  logger.fine("sniffLog($logPath) listening line...");
   await reader.listen((String line) async {
     if (cancelThis) {
       logger.fine("already cancelled");

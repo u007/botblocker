@@ -128,6 +128,7 @@ class CSFBlackList extends BlackListHandler {
       Map<String, dynamic> data = jsonDecode(line);
       ViolationInfo info = ViolationInfo()..fromMap(data);
       if (info.logName == logName && info.path == violatedPath) {
+        logger.fine("found violation $logName: $violatedPath, adding $date");
         info.addDate(date);
         logger.info(
             "found violation $logName: $violatedPath, count: ${info.count()}");
@@ -243,16 +244,26 @@ class ViolationInfo {
   ViolationInfo({this.logName, this.path, this.dates}) {}
 
   addDate(DateTime date) {
+    logger.fine("addDate $date");
     if (dates == null) {
-      dates = [];
+      dates = [date];
+    } else {
+      dates.insert(0, date);
     }
-    dates.insert(0, date);
+
+    if (dates.length < 2) {
+      return;
+    }
+
+    logger.fine("adddate cleanup $dates");
+    //clean up
     DateTime now = getNow();
     DateTime expiredTime = now.subtract(Duration(days: 2));
-    int index = 0;
-    //clean up
-    while (dates[index].isAfter(expiredTime)) {
+    int index = dates.length - 1;
+
+    while (dates[index].isBefore(expiredTime)) {
       dates.removeAt(index);
+      index = index - 1;
     }
   }
 
@@ -277,9 +288,12 @@ class ViolationInfo {
 
   Map<String, dynamic> toMap() {
     List<String> outDates = [];
-    for (int c = 0; c < dates.length; c++) {
-      outDates.add(utcTimeFormat(dates[c]));
+    if (dates != null) {
+      for (int c = 0; c < dates.length; c++) {
+        outDates.add(utcTimeFormat(dates[c]));
+      }
     }
+
     return {'log_name': logName, 'path': path, 'date': outDates};
   }
 
