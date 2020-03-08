@@ -20,9 +20,11 @@ watchDestination(String path) async {
     final eventPath = event.path;
     if (eventPath.endsWith('~') ||
         eventPath.endsWith(".swp") ||
-        eventPath.endsWith(".swpx")) {
+        eventPath.endsWith(".swpx") ||
+        eventPath.endsWith("bytes_log")) {
       return;
     }
+
     //if file pattern
     try {
       await lock.acquire();
