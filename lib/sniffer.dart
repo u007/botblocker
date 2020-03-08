@@ -67,7 +67,7 @@ sniffLogwithConfig(String logPath, Map<String, dynamic> logConfig,
   await reader.listen((String line) async {
     if (lineNo < lastLine || cancelThis) {
       lineNo += 1;
-      logger.finer("Skipping $lineNo to $lastLine");
+      // logger.finer("Skipping $lineNo to $lastLine");
       return;
     }
     if (lineNo == lastLine) {
@@ -85,7 +85,7 @@ sniffLogwithConfig(String logPath, Map<String, dynamic> logConfig,
           return;
         }
       }
-      logger.finer("Skipping last line $lineNo to $lastLine");
+      // logger.finer("Skipping last line $lineNo to $lastLine");
       lineNo += 1;
       return; // start with next line
     }
