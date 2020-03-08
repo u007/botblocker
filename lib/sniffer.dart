@@ -45,7 +45,7 @@ Future sniffLog(String logPath, SnifferHandler sniffHandler) async {
 
 sniffLogwithConfig(String logPath, Map<String, dynamic> logConfig,
     SnifferHandler sniffHandler) async {
-  final int lastLine = logConfig['lastLine'] as int;
+  int lastLine = logConfig['lastLine'] as int;
   final String lastText = logConfig['lastText'] as String;
 
   logger.info("path: $logPath, lastLine: $lastLine: $lastText");
@@ -64,16 +64,32 @@ sniffLogwithConfig(String logPath, Map<String, dynamic> logConfig,
   String readLastLine = "";
   bool cancelThis = false;
   var reader = contentStream.transform(Utf8Decoder()).transform(LineSplitter());
-  if (lastLine > 0) {
-    logger.info("sniffLog($logPath) Skipping to $lastLine...");
-    reader = reader.skip(lastLine - 1);
-    lineNo = lastLine; //next line is next line
+  int lineCount = await reader.length;
+
+  //reopen stream
+  contentStream = file.openRead();
+  reader = contentStream.transform(Utf8Decoder()).transform(LineSplitter());
+
+  logger.info("sniffLog($logPath) line count ${lineCount}...");
+  if (lineCount < lastLine) {
+    logger.info("log file shorter than last line $lineCount vs $lastLine");
+    lineNo = 1;
+    lastLine = 0;
+  } else {
+    if (lastLine > 0) {
+      logger.info("sniffLog($logPath) Skipping to $lastLine...");
+      reader = reader.skip(lastLine - 1);
+      lineNo = lastLine; //next line is next line
+    }
   }
+  logger.info("listening line...");
   await reader.listen((String line) async {
     if (cancelThis) {
+      logger.fine("already cancelled");
       return;
     }
-    if (lineNo == lastLine) {
+    // logger.info("sniffLog($logPath:$lineNo) line: $line");
+    if (lastLine > 0 && lineNo == lastLine) {
       if (lastText != null) {
         if (!line.startsWith(lastText)) {
           logger.info(
@@ -191,6 +207,8 @@ sniffLogwithConfig(String logPath, Map<String, dynamic> logConfig,
       } else {
         logger.info("nothing changed on $logPath");
       }
+    } else {
+      logger.fine("cancelled done");
     }
   }, onError: (e) {
     logger.severe("Error: $logPath {$lineNo-1} ${e}");
