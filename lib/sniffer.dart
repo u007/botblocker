@@ -94,7 +94,7 @@ sniffLogwithConfig(String logPath, Map<String, dynamic> logConfig,
     // logger.fine("read:$lineNo: $line");
     RegExpMatch match = matchLogLine.firstMatch(line);
     if (match == null) {
-      logger.severe("nothing matched on line: $lineNo: $line");
+      logger.fine("nothing matched on line: $lineNo: $line");
       lineNo += 1;
       return;
     }

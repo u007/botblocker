@@ -191,7 +191,7 @@ class CSFBlackList extends BlackListHandler {
   Future<String> csfRun(
     List<String> args,
   ) async {
-    Completer c = new Completer();
+    Completer c = new Completer<String>();
     if (csfPath == "") {
       csfPath = whichSync('csf');
       if (csfPath == null) {
