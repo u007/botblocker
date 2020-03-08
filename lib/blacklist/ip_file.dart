@@ -43,7 +43,7 @@ class IPFileSaver {
 
     //creates dir and file if not exists
     File file = new File(filePath);
-    if (!await file.exists()) {
+    if (!file.existsSync()) {
       return;
     }
 
@@ -76,7 +76,7 @@ class IPFileSaver {
 
     //creates dir and file if not exists
     File file = new File(filePath);
-    if (!await file.exists()) {
+    if (!file.existsSync()) {
       await load();
       file = new File(filePath);
     }
@@ -107,7 +107,7 @@ class IPFileSaver {
   Future<List<BanIPInfo>> load() async {
     String filePath = "$savePath";
     File file = new File(filePath);
-    if (!await file.exists()) {
+    if (!file.existsSync()) {
       file.createSync(recursive: true);
     }
 

@@ -11,7 +11,7 @@ import '../util/logging.dart';
 class FileSnifferHandler extends SnifferHandler {
   final String configPath;
 
-  FileSnifferHandler({this.configPath: './data'});
+  FileSnifferHandler({this.configPath: '.data'});
 
   Future<File> prepareLogFileConfig(String path) async {
     File logFile = File(path).absolute;
@@ -23,7 +23,9 @@ class FileSnifferHandler extends SnifferHandler {
     String filePath = "$configPath/${digest.toString()}-$name.json";
     logger.fine("prepare logconfig $filePath | actual: ${logFile.path}");
     File file = new File(filePath);
-    if (!await file.exists()) {
+    logger.fine("checking logconfig $filePath | actual: ${logFile.path}");
+    if (!file.existsSync()) {
+      logger.fine("prepared logconfig $filePath not exists!");
       file.createSync(recursive: true);
       file.writeAsStringSync('{"lastLine": 0, "lastText": null, "v": 1}');
     }
@@ -66,7 +68,7 @@ class FileSnifferHandler extends SnifferHandler {
     String filePath = "$configPath/${digest.toString()}-$name.json";
     logger.fine("resetting logconfig $filePath, actual: ${logFile.path}");
     File file = new File(filePath);
-    if (await file.exists()) {
+    if (file.existsSync()) {
       file.deleteSync();
     }
   }

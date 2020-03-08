@@ -107,7 +107,7 @@ class AccessClientHandler {
 
   loadConfig() async {
     var file = File(pathToConfig);
-    if (!await file.exists()) {
+    if (!file.existsSync()) {
       return;
     }
 

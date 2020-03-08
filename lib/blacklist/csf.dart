@@ -23,7 +23,7 @@ class CSFBlackList extends BlackListHandler {
     if (test) return;
     String filePath = "$violationPath/$ip.log";
     File file = new File(filePath);
-    if (!await file.exists()) {
+    if (!file.existsSync()) {
       return;
     }
 
@@ -60,7 +60,7 @@ class CSFBlackList extends BlackListHandler {
   Future<Map<String, dynamic>> loadIP(String ip) async {
     String filePath = "$violationPath/$ip.log";
     File file = new File(filePath);
-    if (!await file.exists()) {
+    if (!file.existsSync()) {
       file.createSync(recursive: true);
       file.writeAsStringSync('{"count": 1, "v": 1}\n', mode: FileMode.append);
     }
@@ -78,7 +78,7 @@ class CSFBlackList extends BlackListHandler {
       String ip, String logName, String violatedPath) async {
     String filePath = "$violationPath/$ip.log";
     File file = new File(filePath);
-    if (!await file.exists()) {
+    if (!file.existsSync()) {
       file.createSync(recursive: true);
       file.writeAsStringSync('{"count": 1, "v": 1}\n', mode: FileMode.append);
     }
@@ -112,7 +112,7 @@ class CSFBlackList extends BlackListHandler {
 
     //creates dir and file if not exists
     File file = new File(filePath);
-    if (!await file.exists()) {
+    if (!file.existsSync()) {
       await loadIP(ip); //create file
       file = new File(filePath);
     }
@@ -166,6 +166,9 @@ class CSFBlackList extends BlackListHandler {
   }
 
   banIP(String ip, {String reason = ''}) async {
+    if (test) {
+      return;
+    }
     if (await isWhiteListedIP(ip)) {
       throw "Is whitelisted ip $ip";
     }
@@ -259,10 +262,13 @@ class ViolationInfo {
     }
     DateTime now = getNow();
     DateTime expiredTime = now.subtract(duration);
-    int index = 0;
     int count = 0;
     //clean up
-    while (dates[index].isBefore(expiredTime)) {
+
+    for (int index = 0; index < dates.length; index++) {
+      if (dates[index].isAfter(expiredTime)) {
+        break;
+      }
       count += 1;
     }
 
@@ -279,6 +285,10 @@ class ViolationInfo {
 
   String toJSON() {
     return json.encode(toMap());
+  }
+
+  String toString() {
+    return toJSON();
   }
 
   int count() {

@@ -149,6 +149,8 @@ sniffLogwithConfig(String logPath, Map<String, dynamic> logConfig,
             "sniffLog($logPath:$lineNo) ip: $ip, date: $date method: $method found $rule");
         ViolationInfo info =
             await bHandler.loadIPViolation(ip, logFileName, path);
+        logger.fine(
+            "sniffLog($logPath:$lineNo) ip: $ip, date: $date method: $method loaded $info");
         int violatedCount = await info.countViolation(rule.duration) + 1;
         if (violatedCount >= rule.count) {
           logger.info(
@@ -172,6 +174,7 @@ sniffLogwithConfig(String logPath, Map<String, dynamic> logConfig,
     // logger.fine("words: ${words.length}");
   }, onDone: () async {
     if (!cancelThis) {
+      logger.info("done $logPath ${lineNo - 1}");
       if (lineNo < lastLine) {
         logger.info("log file shorter than last line $lineNo vs $lastLine");
         cancelThis = true;
@@ -183,11 +186,13 @@ sniffLogwithConfig(String logPath, Map<String, dynamic> logConfig,
         logger.info(
             "completed ${lineNo - 1} line(s) with $newLine new lines on $logPath");
         await sniffHandler.saveLogFileConfig(logPath, lineNo - 1, readLastLine);
+        logger.info(
+            "saved ${lineNo - 1} line(s) with $newLine new lines on $logPath");
       } else {
         logger.info("nothing changed on $logPath");
       }
     }
   }, onError: (e) {
-    logger.severe("Error: ${e.toString()}");
+    logger.severe("Error: $logPath {$lineNo-1} ${e}");
   }, cancelOnError: true);
 }
