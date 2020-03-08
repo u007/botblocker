@@ -5,11 +5,13 @@ import 'util/logging.dart';
 import 'dart:io';
 import './sniffer/file.dart';
 import './sniffer.dart';
+import 'package:mutex/mutex.dart';
 
 /// make a watcher for all domain logs in a directory
 ///
 // watch /etc/apache2/logs/domlogs/*
 watchDestination(String path) async {
+  Mutex lock = Mutex();
   String absolutePath = p.absolute(path);
   logger.info("watching2 $absolutePath");
   var watcher = DirectoryWatcher(absolutePath);
@@ -23,10 +25,13 @@ watchDestination(String path) async {
     }
     //if file pattern
     try {
+      await lock.acquire();
       await sniffLog(eventPath, FileSnifferHandler());
     } on FileSystemException {
       //ignore
       logger.fine("ignoring missing $eventPath");
+    } finally {
+      lock.release();
     }
   });
 }

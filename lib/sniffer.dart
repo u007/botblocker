@@ -110,7 +110,7 @@ sniffLogwithConfig(String logPath, Map<String, dynamic> logConfig,
     DateFormat format = new DateFormat("dd/MMM/yyyy:hh:mm:ss");
     DateTime date = format.parse(logDate);
     logger.fine(
-        "accessLog($lineNo) ip: $ip, date: $date method: $method path: $path agent: $agent");
+        "sniffLog($logPath:$lineNo) ip: $ip, date: $date method: $method path: $path agent: $agent");
 
     //TODO check if path matches any of the banned list and violated within the hour
 
@@ -118,7 +118,7 @@ sniffLogwithConfig(String logPath, Map<String, dynamic> logConfig,
       bool bFound = false;
       if (rule.exact && rule.url == path) {
         logger.fine(
-            "accessLog($lineNo) ip: $ip, date: $date method: $method found exact: $rule");
+            "sniffLog($logPath:$lineNo) ip: $ip, date: $date method: $method found exact: $rule");
         bFound = true;
       } else if (!rule.exact) {
         if (path.contains(rule.url)) {
@@ -129,12 +129,12 @@ sniffLogwithConfig(String logPath, Map<String, dynamic> logConfig,
 
       CSFBlackList bHandler = CSFBlackList();
       if (await bHandler.isBannedIP(ip)) {
-        logger.info("accessLog($lineNo) banned ip: $ip, skipping");
+        logger.info("sniffLog($logPath:$lineNo) banned ip: $ip, skipping");
         continue;
       }
 
       if (await bHandler.isWhiteListedIP(ip)) {
-        logger.info("accessLog($lineNo) whitelisted ip: $ip, skipping");
+        logger.info("sniffLog($logPath:$lineNo) whitelisted ip: $ip, skipping");
         continue;
       }
 
@@ -144,17 +144,17 @@ sniffLogwithConfig(String logPath, Map<String, dynamic> logConfig,
             reason: 'botblock ${rule.id}');
       } else {
         logger.info(
-            "accessLog($lineNo) ip: $ip, date: $date method: $method found $rule");
+            "sniffLog($logPath:$lineNo) ip: $ip, date: $date method: $method found $rule");
         ViolationInfo info =
             await bHandler.loadIPViolation(ip, logFileName, path);
         int violatedCount = await info.countViolation(rule.duration) + 1;
         if (violatedCount >= rule.count) {
           logger.info(
-              "accessLog($lineNo) ip: $ip, date: $date method: $method violated count ${rule.count}, violatedCount: $violatedCount - banning!");
+              "sniffLog($logPath:$lineNo) ip: $ip, date: $date method: $method violated count ${rule.count}, violatedCount: $violatedCount - banning!");
           await bHandler.banIP(ip, reason: 'botblock ${rule.id}');
         } else {
           logger.fine(
-              "accessLog($lineNo) ip: $ip, date: $date method: $method violated count ${rule.count}, violatedCount: $violatedCount - counting...");
+              "sniffLog($logPath:$lineNo) ip: $ip, date: $date method: $method violated count ${rule.count}, violatedCount: $violatedCount - counting...");
         }
 
         await bHandler.storeViolation(ip, date, logFileName, path,

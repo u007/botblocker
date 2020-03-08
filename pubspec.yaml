@@ -8,4 +8,5 @@ dependencies:
   colorize: any
   process_run: ^0.10.4+1
   intl: ^0.16.0
+  mutex: ^1.0.3
 dev_dependencies:
