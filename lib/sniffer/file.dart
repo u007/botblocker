@@ -21,12 +21,13 @@ class FileSnifferHandler extends SnifferHandler {
     var digest = sha1.convert(bytes);
 
     String filePath = "$configPath/${digest.toString()}-$name.json";
-    logger.fine("opening logconfig $filePath | actual: ${logFile.path}");
+    logger.fine("prepare logconfig $filePath | actual: ${logFile.path}");
     File file = new File(filePath);
     if (!await file.exists()) {
       file.createSync(recursive: true);
       file.writeAsStringSync('{"lastLine": 0, "lastText": null, "v": 1}');
     }
+    logger.fine("prepared logconfig $filePath | actual: ${logFile.path}");
     return file;
   }
 
@@ -40,13 +41,15 @@ class FileSnifferHandler extends SnifferHandler {
 
   Future<String> saveLogFileConfig(String path, int lineNo, String lastLine,
       {version = 1}) async {
+    logger.fine("saveLogFileConfig ${path}");
     File file = await prepareLogFileConfig(path);
-
+    logger.fine("saveLogFileConfig ${file.path} | actual: ${path}");
     final data = {
       "lastLine": lineNo,
       "lastText": lastLine,
       "v": version,
     };
+
     final content = jsonEncode(data);
     file.writeAsStringSync(content);
 

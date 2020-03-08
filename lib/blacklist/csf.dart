@@ -13,11 +13,14 @@ class CSFBlackList extends BlackListHandler {
   IPFileSaver ipSaver;
   String csfPath = "";
   int version = 0;
-  CSFBlackList({this.violationPath = ".data/ip", this.csfPath = ""}) {
+  bool test = false;
+  CSFBlackList(
+      {this.violationPath = ".data/ip", this.csfPath = "", this.test}) {
     ipSaver = IPFileSaver();
   }
 
   resetIP(String ip, {String logName: null}) async {
+    if (test) return;
     String filePath = "$violationPath/$ip.log";
     File file = new File(filePath);
     if (!await file.exists()) {
@@ -85,13 +88,23 @@ class CSFBlackList extends BlackListHandler {
 
     for (int c = 1; c < lines.length; c++) {
       String line = lines[c];
+      if (line.trim().length == 0) {
+        continue;
+      }
       Map<String, dynamic> data = jsonDecode(line);
-      return ViolationInfo()..fromMap(data);
+      ViolationInfo info = ViolationInfo()..fromMap(data);
+      if (info.logName == logName && info.path == violatedPath) {
+        return info;
+      }
     }
 
     return ViolationInfo(logName: logName, path: violatedPath);
   }
 
+  /* stores to .data/x.x.x.x.log with 
+  * 1st line indicate configuration
+  * second onwards lines indicate log file based violation and rules
+  */
   storeViolation(String ip, DateTime date, String logName, String violatedPath,
       {count: 1}) async {
     //date specific path
@@ -109,12 +122,15 @@ class CSFBlackList extends BlackListHandler {
     bool bFoundLine = false;
     for (int c = 1; c < lines.length; c++) {
       String line = lines[c];
+      if (line.trim() == '') {
+        continue; //ignore empty line
+      }
       Map<String, dynamic> data = jsonDecode(line);
       ViolationInfo info = ViolationInfo()..fromMap(data);
       if (info.logName == logName && info.path == violatedPath) {
         info.addDate(date);
         logger.info(
-            "found violation $logName: $violatedPath, count: ${info.count}");
+            "found violation $logName: $violatedPath, count: ${info.count()}");
         lines[c] = info.toJSON();
         bFoundLine = true;
         break;
@@ -124,8 +140,8 @@ class CSFBlackList extends BlackListHandler {
     if (!bFoundLine) {
       ViolationInfo info = ViolationInfo(logName: logName, path: violatedPath);
       info.addDate(date);
-      logger
-          .info("new violation $logName: $violatedPath, count: ${info.count}");
+      logger.info(
+          "new violation $logName: $violatedPath, count: ${info.count()}");
       lines.add(info.toJSON());
     }
 
@@ -159,6 +175,9 @@ class CSFBlackList extends BlackListHandler {
   }
 
   isBannedIP(String ip) async {
+    if (test) {
+      return false;
+    }
     var res = await csfRun(['-g', ip]);
     if (res.indexOf('csf.allow:') >= 0) {
       logger.fine("is csf.allow $ip");
@@ -174,6 +193,9 @@ class CSFBlackList extends BlackListHandler {
   }
 
   isWhiteListedIP(String ip) async {
+    if (test) {
+      return false;
+    }
     var res = await csfRun(['-g', ip]);
     if (res.indexOf('csf.allow:') >= 0) {
       logger.fine("is csf.allow $ip");
@@ -191,6 +213,9 @@ class CSFBlackList extends BlackListHandler {
   Future<String> csfRun(
     List<String> args,
   ) async {
+    if (test) {
+      throw "Is test, please do not run this in test";
+    }
     Completer c = new Completer<String>();
     if (csfPath == "") {
       csfPath = whichSync('csf');
@@ -215,6 +240,9 @@ class ViolationInfo {
   ViolationInfo({this.logName, this.path, this.dates}) {}
 
   addDate(DateTime date) {
+    if (dates == null) {
+      dates = [];
+    }
     dates.insert(0, date);
     DateTime now = getNow();
     DateTime expiredTime = now.subtract(Duration(days: 2));
@@ -226,6 +254,9 @@ class ViolationInfo {
   }
 
   countViolation(Duration duration) {
+    if (dates == null) {
+      return 0;
+    }
     DateTime now = getNow();
     DateTime expiredTime = now.subtract(duration);
     int index = 0;

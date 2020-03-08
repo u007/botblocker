@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 const defaultRuleDuration = Duration(minutes: 15);
 
 class ViolationRule {
@@ -8,6 +10,16 @@ class ViolationRule {
   final Duration duration;
   ViolationRule(this.id, this.url,
       {this.exact: false, this.count: 1, this.duration: defaultRuleDuration});
+
+  String toString() {
+    return json.encode({
+      'id': id,
+      'url': url,
+      'exact': exact,
+      'count': count,
+      'duration': duration.toString()
+    });
+  }
 }
 
 final Map<String, List<ViolationRule>> violationConfig = {

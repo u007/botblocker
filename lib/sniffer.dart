@@ -64,25 +64,27 @@ sniffLogwithConfig(String logPath, Map<String, dynamic> logConfig,
   String readLastLine = "";
   bool cancelThis = false;
   var reader = contentStream.transform(Utf8Decoder()).transform(LineSplitter());
+  if (lastLine > 0) {
+    logger.info("sniffLog($logPath) Skipping to $lastLine...");
+    reader = reader.skip(lastLine - 1);
+    lineNo = lastLine; //next line is next line
+  }
   await reader.listen((String line) async {
-    if (lineNo < lastLine || cancelThis) {
-      lineNo += 1;
-      // logger.finer("Skipping $lineNo to $lastLine");
+    if (cancelThis) {
       return;
     }
     if (lineNo == lastLine) {
       if (lastText != null) {
         if (!line.startsWith(lastText)) {
           logger.info(
-              "Line($lastLine) mismatch, expecting '$lastLine', found: $line");
+              "sniffLog($logPath:$lineNo) Line($lastLine) mismatch, expecting: \"$lastText\", found: $line");
           cancelThis = true;
           // reader.cancel();
           // reader.cancel();
           //rerun from start
           logConfig['lastLine'] = 0;
           logConfig['lastText'] = null;
-          sniffLogwithConfig(logPath, logConfig, sniffHandler);
-          return;
+          return sniffLogwithConfig(logPath, logConfig, sniffHandler);
         }
       }
       // logger.finer("Skipping last line $lineNo to $lastLine");
@@ -127,7 +129,7 @@ sniffLogwithConfig(String logPath, Map<String, dynamic> logConfig,
       }
       if (!bFound) continue;
 
-      CSFBlackList bHandler = CSFBlackList();
+      CSFBlackList bHandler = CSFBlackList(test: true);
       if (await bHandler.isBannedIP(ip)) {
         logger.info("sniffLog($logPath:$lineNo) banned ip: $ip, skipping");
         continue;
@@ -168,20 +170,19 @@ sniffLogwithConfig(String logPath, Map<String, dynamic> logConfig,
 
     lineNo += 1;
     // logger.fine("words: ${words.length}");
-  }, onDone: () {
+  }, onDone: () async {
     if (!cancelThis) {
       if (lineNo < lastLine) {
         logger.info("log file shorter than last line $lineNo vs $lastLine");
         cancelThis = true;
         logConfig['lastLine'] = 0;
         logConfig['lastText'] = null;
-        sniffLogwithConfig(logPath, logConfig, sniffHandler);
-        return;
+        return sniffLogwithConfig(logPath, logConfig, sniffHandler);
       }
       if (newLine > 0) {
         logger.info(
-            "completed $lineNo line(s) with $newLine new lines on $logPath");
-        sniffHandler.saveLogFileConfig(logPath, lineNo - 1, readLastLine);
+            "completed ${lineNo - 1} line(s) with $newLine new lines on $logPath");
+        await sniffHandler.saveLogFileConfig(logPath, lineNo - 1, readLastLine);
       } else {
         logger.info("nothing changed on $logPath");
       }
