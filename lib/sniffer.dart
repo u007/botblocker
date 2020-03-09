@@ -113,7 +113,8 @@ sniffLogwithConfig(String logPath, Map<String, dynamic> logConfig,
           logConfig['lastLine'] = 0;
           logConfig['lastText'] = null;
           await singleLineMutex.release();
-          return sniffLogwithConfig(logPath, logConfig, sniffHandler);
+          var res = await sniffLogwithConfig(logPath, logConfig, sniffHandler);
+          return res;
         }
       }
 
@@ -210,7 +211,7 @@ sniffLogwithConfig(String logPath, Map<String, dynamic> logConfig,
 
     lineNo += 1;
     logger.info("added 1 line loop ${lineNo}");
-    singleLineMutex.release();
+    await singleLineMutex.release();
     // logger.fine("words: ${words.length}");
   }, onDone: () async {
     if (!cancelThis) {
