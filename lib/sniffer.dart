@@ -50,7 +50,6 @@ sniffLogwithConfig(String logPath, Map<String, dynamic> logConfig,
   final String lastText = logConfig['lastText'] as String;
 
   logger.info("path: $logPath, lastLine: $lastLine: $lastText");
-  await sleep(Duration(seconds: 5));
   var file = File(logPath);
   String logFileName = basename(logPath);
   List<ViolationRule> rules = violationConfig.containsKey(logFileName)
@@ -86,7 +85,6 @@ sniffLogwithConfig(String logPath, Map<String, dynamic> logConfig,
   }
 
   logger.fine("sniffLog($logPath) listening line from ${lineNo}...");
-  await sleep(Duration(seconds: 5));
   int readLine = 0;
   // mutex required because reader execute done before finishing executing stream of last line
 
@@ -119,10 +117,7 @@ sniffLogwithConfig(String logPath, Map<String, dynamic> logConfig,
       }
 
       logger.info("sniffLog($logPath:$lineNo) encounter lastline $lastLine");
-      await sleep(Duration(seconds: 10));
       // logger.finer("Skipping last line $lineNo to $lastLine");
-      logger.info("added 1 line ");
-      await sleep(Duration(milliseconds: 100));
       lineNo += 1;
       await singleLineMutex.release();
       return; // start with next line
@@ -133,8 +128,6 @@ sniffLogwithConfig(String logPath, Map<String, dynamic> logConfig,
     RegExpMatch match = matchLogLine.firstMatch(line);
     if (match == null) {
       logger.info("nothing matched on line: $lineNo: $line");
-      logger.info("added 1 line nothing match ");
-      await sleep(Duration(milliseconds: 100));
       lineNo += 1;
       await singleLineMutex.release();
       return;
@@ -208,9 +201,7 @@ sniffLogwithConfig(String logPath, Map<String, dynamic> logConfig,
     readLastLine = line;
 
     newLine += 1;
-
     lineNo += 1;
-    logger.info("added 1 line loop ${lineNo}");
     await singleLineMutex.release();
     // logger.fine("words: ${words.length}");
   }, onDone: () async {
