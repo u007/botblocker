@@ -257,6 +257,8 @@ class ViolationInfo {
 
     logger.fine("adddate cleanup ${dates.length}");
     //clean up
+    dates.sort((a, b) => a.isAfter(b) ? 0 : 1);
+
     DateTime now = getNow();
     DateTime expiredTime = now.subtract(Duration(days: 2));
     int index = dates.length - 1;
@@ -265,8 +267,7 @@ class ViolationInfo {
       dates.removeAt(index);
       index = index - 1;
     }
-
-    dates.sort((a, b) => a.isAfter(b) ? 0 : 1);
+    
     //clean up duplicate
     DateTime lastDate;
     for (int c = dates.length - 1; c >= 0; c--) {
