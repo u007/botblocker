@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:convert';
 import 'package:botblocker/blacklist/csf.dart';
+import 'package:mutex/mutex.dart';
 
 import 'detector/urls.dart';
 import 'util/logging.dart';
@@ -49,6 +50,7 @@ sniffLogwithConfig(String logPath, Map<String, dynamic> logConfig,
   final String lastText = logConfig['lastText'] as String;
 
   logger.info("path: $logPath, lastLine: $lastLine: $lastText");
+  await sleep(Duration(seconds: 5));
   var file = File(logPath);
   String logFileName = basename(logPath);
   List<ViolationRule> rules = violationConfig.containsKey(logFileName)
@@ -83,9 +85,18 @@ sniffLogwithConfig(String logPath, Map<String, dynamic> logConfig,
     }
   }
 
-  logger.fine("sniffLog($logPath) listening line...");
+  logger.fine("sniffLog($logPath) listening line from ${lineNo}...");
+  await sleep(Duration(seconds: 5));
+  int readLine = 0;
+  // mutex required because reader execute done before finishing executing stream of last line
+
+  Mutex singleLineMutex = Mutex();
+
   await reader.listen((String line) async {
+    await singleLineMutex.acquire();
+    readLine = lineNo;
     if (cancelThis) {
+      await singleLineMutex.release();
       logger.fine("already cancelled");
       return;
     }
@@ -101,11 +112,18 @@ sniffLogwithConfig(String logPath, Map<String, dynamic> logConfig,
           //rerun from start
           logConfig['lastLine'] = 0;
           logConfig['lastText'] = null;
+          await singleLineMutex.release();
           return sniffLogwithConfig(logPath, logConfig, sniffHandler);
         }
       }
+
+      logger.info("sniffLog($logPath:$lineNo) encounter lastline $lastLine");
+      await sleep(Duration(seconds: 10));
       // logger.finer("Skipping last line $lineNo to $lastLine");
+      logger.info("added 1 line ");
+      await sleep(Duration(milliseconds: 100));
       lineNo += 1;
+      await singleLineMutex.release();
       return; // start with next line
     }
 
@@ -113,8 +131,11 @@ sniffLogwithConfig(String logPath, Map<String, dynamic> logConfig,
     // logger.fine("read:$lineNo: $line");
     RegExpMatch match = matchLogLine.firstMatch(line);
     if (match == null) {
-      logger.fine("nothing matched on line: $lineNo: $line");
+      logger.info("nothing matched on line: $lineNo: $line");
+      logger.info("added 1 line nothing match ");
+      await sleep(Duration(milliseconds: 100));
       lineNo += 1;
+      await singleLineMutex.release();
       return;
     }
     String ip, logDate, method, path, agent = '';
@@ -166,8 +187,8 @@ sniffLogwithConfig(String logPath, Map<String, dynamic> logConfig,
             "sniffLog($logPath:$lineNo) ip: $ip, date: $date method: $method found $rule");
         ViolationInfo info =
             await bHandler.loadIPViolation(ip, logFileName, path);
-        logger.fine(
-            "sniffLog($logPath:$lineNo) ip: $ip, date: $date method: $method loaded $info");
+        // logger.fine(
+        //     "sniffLog($logPath:$lineNo) ip: $ip, date: $date method: $method loaded");
         int violatedCount = await info.countViolation(rule.duration) + 1;
         if (violatedCount >= rule.count) {
           logger.info(
@@ -188,17 +209,12 @@ sniffLogwithConfig(String logPath, Map<String, dynamic> logConfig,
     newLine += 1;
 
     lineNo += 1;
+    logger.info("added 1 line loop ${lineNo}");
+    singleLineMutex.release();
     // logger.fine("words: ${words.length}");
   }, onDone: () async {
     if (!cancelThis) {
-      logger.info("done $logPath ${lineNo - 1}");
-      if (lineNo < lastLine) {
-        logger.info("log file shorter than last line $lineNo vs $lastLine");
-        cancelThis = true;
-        logConfig['lastLine'] = 0;
-        logConfig['lastText'] = null;
-        return sniffLogwithConfig(logPath, logConfig, sniffHandler);
-      }
+      logger.info("done $logPath ${lineNo - 1} readed: $readLine");
       if (newLine > 0) {
         logger.info(
             "completed ${lineNo - 1} line(s) with $newLine new lines on $logPath");

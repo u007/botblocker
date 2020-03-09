@@ -255,7 +255,7 @@ class ViolationInfo {
       return;
     }
 
-    logger.fine("adddate cleanup $dates");
+    logger.fine("adddate cleanup ${dates.length}");
     //clean up
     DateTime now = getNow();
     DateTime expiredTime = now.subtract(Duration(days: 2));
@@ -265,6 +265,22 @@ class ViolationInfo {
       dates.removeAt(index);
       index = index - 1;
     }
+
+    dates.sort((a, b) => a.isAfter(b) ? 0 : 1);
+    //clean up duplicate
+    DateTime lastDate;
+    for (int c = dates.length - 1; c >= 0; c--) {
+      if (lastDate == null) {
+        lastDate = dates[c];
+        continue;
+      }
+      if (lastDate.isAtSameMomentAs(dates[c])) {
+        logger.fine("removed duplicate ${c + 1} ${dates[c]}");
+        dates.removeAt(c + 1);
+      }
+      lastDate = dates[c];
+    }
+    logger.fine("adddate after cleanup ${dates.length}");
   }
 
   countViolation(Duration duration) {
