@@ -229,7 +229,7 @@ class CSFBlackList extends BlackListHandler {
     }
 
     Process.run(csfPath, args).then((ProcessResult results) {
-      logger.fine(results.stdout);
+      // logger.fine(results.stdout);
       c.complete(results.stdout);
     });
     return c.future;

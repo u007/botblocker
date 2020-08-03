@@ -10,7 +10,6 @@ import './sniffer/file.dart';
 import './sniffer.dart';
 import 'package:mutex/mutex.dart';
 
-Map<String, bool> waitingFile = {};
 Mutex lock = Mutex();
 File lockFile = File(".watcher.lock");
 
@@ -34,21 +33,22 @@ watchDestination(String path) async {
       return;
     }
 
+    await processQueue({eventPath: true});
     // await lock.acquire();
-    if (!waitingFile.containsKey(eventPath)) {
-      waitingFile[eventPath] = true;
-      logger.info("aded queue: path: $eventPath event: ${event.toString()}");
-      await processQueue();
-    } else {
-      logger.info(
-          "skip exists queue: path: $eventPath event: ${event.toString()}");
-    }
+    // if (!waitingFile.containsKey(eventPath)) {
+    //   waitingFile[eventPath] = true;
+    //   logger.info("aded queue: path: $eventPath event: ${event.toString()}");
+    //   await processQueue([eventPath]);
+    // } else {
+    //   logger.info(
+    //       "skip exists queue: path: $eventPath event: ${event.toString()}");
+    // }
     // await lock.release();
     //if file pattern
   }).handler);
 }
 
-processQueue() async {
+processQueue(Map<String, bool> waitingFile) async {
   logger.fine("processing queue ${waitingFile.keys}");
   // await lock.acquire();
   while (waitingFile.keys.length > 0) {

@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:botblocker/util/logging.dart';
+import './logging.dart';
 
 const Duration defaultTimeout = Duration(minutes: 30);
 typedef requestHandler(dynamic req);
@@ -14,6 +14,7 @@ class SingularProcess {
   bool setupDone = false;
 
   SingularProcess(this.lockName, this.handler, {lockDuration: defaultTimeout}) {
+    setupLogger();
     timeout = lockDuration;
     path = "./${lockName}.lck";
     lockFile = new File(path);
