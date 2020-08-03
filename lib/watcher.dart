@@ -21,6 +21,8 @@ watchDestination(String path) async {
     if (eventPath.endsWith('~') ||
         eventPath.endsWith(".swp") ||
         eventPath.endsWith(".swpx") ||
+        eventPath.endsWith(".bkup") ||
+        eventPath.endsWith(".bk") ||
         eventPath.endsWith("bytes_log")) {
       return;
     }
@@ -32,6 +34,8 @@ watchDestination(String path) async {
     } on FileSystemException {
       //ignore
       logger.fine("ignoring missing $eventPath");
+    } catch (error, stack) {
+      logger.info("path: $eventPath unhandled exception: $error | $stack");
     } finally {
       lock.release();
     }
