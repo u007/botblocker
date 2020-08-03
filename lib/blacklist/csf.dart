@@ -193,7 +193,7 @@ class CSFBlackList extends BlackListHandler {
       return true;
     }
 
-    return true;
+    return false;
   }
 
   isWhiteListedIP(String ip) async {
@@ -267,7 +267,7 @@ class ViolationInfo {
       dates.removeAt(index);
       index = index - 1;
     }
-    
+
     //clean up duplicate
     DateTime lastDate;
     for (int c = dates.length - 1; c >= 0; c--) {
