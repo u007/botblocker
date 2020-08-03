@@ -17,7 +17,8 @@ class FileSnifferHandler extends SnifferHandler {
     File logFile = File(path).absolute;
     String name = basename(logFile.path);
 
-    var bytes = utf8.encode(logFile.path); // data being hashed
+    var bytes =
+        utf8.encode(logFile.path.trim().toLowerCase()); // data being hashed
     var digest = sha1.convert(bytes);
 
     String filePath = "$configPath/${digest.toString()}-$name.json";

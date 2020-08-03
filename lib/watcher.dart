@@ -23,6 +23,7 @@ watchDestination(String path) async {
         eventPath.endsWith(".swpx") ||
         eventPath.endsWith(".bkup") ||
         eventPath.endsWith(".bk") ||
+        eventPath.endsWith(".lock") ||
         eventPath.endsWith("bytes_log")) {
       return;
     }
