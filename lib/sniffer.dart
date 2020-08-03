@@ -161,7 +161,7 @@ sniffLogwithConfig(String logPath, Map<String, dynamic> logConfig,
       }
       if (!bFound) continue;
 
-      CSFBlackList bHandler = CSFBlackList(test: true);
+      CSFBlackList bHandler = CSFBlackList(test: false);
       if (await bHandler.isBannedIP(ip)) {
         logger.info("sniffLog($logPath:$lineNo) banned ip: $ip, skipping");
         continue;
