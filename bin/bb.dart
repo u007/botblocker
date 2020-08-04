@@ -72,7 +72,7 @@ main(List<String> args) async {
       if (args.length > 0) {
         throw "Unknown command ${args[0]}, please use 'help' for available commands";
       }
-      await watchDestination('logs');
+    // await watchDestination('logs');
   }
   ;
 }

@@ -10,6 +10,7 @@ class SingularProcess {
   final requestHandler handler;
   File lockFile;
   String path;
+
   Duration timeout;
   bool setupDone = false;
 
@@ -29,13 +30,26 @@ class SingularProcess {
     setupDone = true;
   }
 
+  //handle without exception
+  tryHandle(dynamic p) async {
+    String debugPrefix = '';
+    try {
+      debugPrefix = p.path;
+      await handle(p);
+    } catch (err, stack) {
+      logger.info(
+          "singularProcess($lockName)$debugPrefix tryHandle error: $err | $stack");
+    }
+  }
+
   handle(dynamic p) async {
-    logger.info("singularProcess($lockName) handling....");
+    String debugPrefix = p.path;
+    logger.info("singularProcess($lockName)$debugPrefix handling....");
     while (!setupDone) {
-      logger.fine('singularProcess($lockName) waiting setup');
+      logger.fine('singularProcess($lockName)$debugPrefix waiting setup');
       await sleep(Duration(milliseconds: 100));
     }
-    logger.info("singularProcess($lockName) timeout $timeout");
+    logger.info("singularProcess($lockName)$debugPrefix timeout $timeout");
     var end = new DateTime.now().toUtc().add(timeout);
     var now = new DateTime.now().toUtc();
     var fileType = FileSystemEntity.typeSync(path);
@@ -44,7 +58,8 @@ class SingularProcess {
       final now2 = new DateTime.now().toUtc();
       final timeWait = now2.difference(now);
       if (timeWait.inSeconds % 10 > 0) {
-        logger.fine("singularProcess($lockName) Waiting for lock ${path}");
+        logger.fine(
+            "singularProcess($lockName)$debugPrefix Waiting for lock ${path}");
       }
     }
 
@@ -52,11 +67,12 @@ class SingularProcess {
       throw "Unable to obtain lock ${path}";
     }
 
-    logger.info("typeSync $fileType ok?");
-    logger.info("singularProcess($lockName) creating lockfile ${path}");
+    logger.info(
+        "singularProcess($lockName)$debugPrefix creating lockfile ${path}");
     await lockFile.create(recursive: true);
     fileType = FileSystemEntity.typeSync(path);
-    logger.info("typeSync ok after create? $fileType");
+    logger.info(
+        "singularProcess($lockName)$debugPrefix typeSync ok after create? $fileType");
 
     if (fileType == FileSystemEntityType.notFound) {
       throw "Unable to create lock ${path}";
@@ -66,7 +82,7 @@ class SingularProcess {
       // print("not calling handler!");
       return await handler(p);
     } catch (err) {
-      logger.info("singularProcess($lockName) error: $err");
+      logger.info("singularProcess($lockName)$debugPrefix  error: $err");
       rethrow;
     } finally {
       if (FileSystemEntity.typeSync(path) != FileSystemEntityType.notFound) {

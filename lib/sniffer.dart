@@ -95,7 +95,7 @@ sniffLogwithConfig(String logPath, Map<String, dynamic> logConfig,
     readLine = lineNo;
     if (cancelThis) {
       await singleLineMutex.release();
-      logger.fine("already cancelled");
+      logger.finer("already cancelled");
       return;
     }
     // logger.info("sniffLog($logPath:$lineNo) line: $line");
@@ -146,7 +146,7 @@ sniffLogwithConfig(String logPath, Map<String, dynamic> logConfig,
     logger.fine(
         "sniffLog($logPath:$lineNo) ip: $ip, date: $date method: $method path: $path agent: $agent");
 
-    //TODO check if path matches any of the banned list and violated within the hour
+    // check if path matches any of the banned list and violated within the hour
 
     for (ViolationRule rule in rules) {
       bool bFound = false;
