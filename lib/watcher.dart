@@ -41,7 +41,25 @@ watchDestination(String path) async {
   Isolate watchIso =
       await Isolate.spawn(watchIsolate, WatchInit(mainReceiver.sendPort));
 
-  final watcherHandler = SingularProcess('watcher', (event) async {
+  // final watcherHandler = SingularProcess('watcher', (event) async {
+  //   logger.fine("caught: $path event: ${event.toString()}");
+  //   final eventPath = event.path;
+  //   final eventType = event.type;
+  //   if (eventPath.endsWith('~') ||
+  //       eventPath.endsWith(".swp") ||
+  //       eventPath.endsWith(".swpx") ||
+  //       eventPath.endsWith(".bkup") ||
+  //       eventPath.endsWith(".bk") ||
+  //       eventPath.endsWith(".lock") ||
+  //       eventPath.endsWith("bytes_log")) {
+  //     return;
+  //   }
+
+  //   queueReceiver.send('$eventType:$eventPath');
+  // });
+
+  // watcher.events.listen(watcherHandler.tryHandle);
+  watcher.events.listen((event) async {
     logger.fine("caught: $path event: ${event.toString()}");
     final eventPath = event.path;
     final eventType = event.type;
@@ -55,69 +73,56 @@ watchDestination(String path) async {
       return;
     }
 
-    queueReceiver.send('$eventType:$path');
-
-    await lock.acquire();
-    try {
-      if (runningPath.isNotEmpty) {
-        if (runningPath == eventPath) {
-          logger.info("same running path $eventPath, skipping!");
-          return;
-        }
-      }
-      while (runningPath.isNotEmpty) {
-        logger.info("waiting for another process: $eventPath...");
-        await sleep(Duration(seconds: 5));
-      }
-
-      await processQueue({eventPath: true});
-      runningPath = '';
-    } finally {
-      lock.release();
-    }
+    queueReceiver.send('$eventType:$eventPath');
   });
 
-  watcher.events.listen(watcherHandler.tryHandle);
+  Timer.periodic(Duration(seconds: 10), (Timer t) async {
+    logger.info('watchDestination: run...');
+    // await receiverMutex.acquire();
+    try {
+      queueReceiver.send('queue');
+    } catch (err, stack) {
+      logger.info('error processQueue: $err | $stack');
+    } finally {
+      // await receiverMutex.release();
+    }
+  });
 }
 
 void watchIsolate(WatchInit initConfig) async {
   ReceivePort receiver = ReceivePort();
-  print('sending watcher sendport');
+  print('watchIsolate: sending watcher sendport');
   await initConfig.sendPort.send(receiver.sendPort);
   Map<String, bool> pendingQueue = {};
   receiver.listen((data) async {
+    logger.info("watchISO: $data");
     await receiverMutex.acquire();
+    logger.finer("watchISO: starting $data");
 
     try {
       if (data is String) {
+        if (data == 'queue') {
+          await processQueue(pendingQueue);
+          pendingQueue = {};
+          return;
+        }
         final event = data.split(':');
         final file = event[1];
         if (pendingQueue.containsKey(file)) {
-          print('ignoring $file, already in queue');
+          print('watchIsolate: ignoring $file, already in queue');
           return;
         }
 
         pendingQueue[file] = true;
       }
     } catch (err) {
-      print('log receiver error: $err');
+      logger.info('watchIsolate: error: $err');
     } finally {
       await receiverMutex.release();
     }
     // loggerLog('[loggingIsolate] $data');
     // pendingLogs.add(data);
   }); // receiver
-
-  Timer.run(() async {
-    await receiverMutex.acquire();
-    try {
-      await processQueue(pendingQueue);
-    } catch (err, stack) {
-      logger.info('error processQueue: $err | $stack');
-    } finally {
-      await receiverMutex.release();
-    }
-  });
 } // watchIsolate
 
 processQueue(Map<String, bool> waitingFile) async {
@@ -131,19 +136,12 @@ processQueue(Map<String, bool> waitingFile) async {
       waitingFile.remove(pendingFile);
     } on FileSystemException {
       //ignore
-      logger.fine("ignoring missing $pendingFile");
+      logger.fine("processQueue ignoring missing $pendingFile");
     } catch (error, stack) {
-      logger.info("path: $pendingFile unhandled exception: $error | $stack");
+      logger.info(
+          "processQueue path: $pendingFile unhandled exception: $error | $stack");
     }
   }
-
-  // await lock.release();
-
-  // Timer.run(() async {
-  //   logger.fine("loop... sleeping 5s");
-  //   await sleep(Duration(seconds: 5));
-  //   processQueue();
-  // });
 } // processQueue
 
 class WatchInit {

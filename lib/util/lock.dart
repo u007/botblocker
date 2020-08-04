@@ -57,9 +57,9 @@ class SingularProcess {
       await sleep(Duration(milliseconds: 100));
       final now2 = new DateTime.now().toUtc();
       final timeWait = now2.difference(now);
-      if (timeWait.inSeconds % 10 > 0) {
-        logger.fine(
-            "singularProcess($lockName)$debugPrefix Waiting for lock ${path}");
+      if (timeWait.inSeconds % 10 == 0) {
+        logger.finer(
+            "singularProcess($lockName)$debugPrefix Waiting for lock ${path} ${timeWait.inSeconds}s");
       }
     }
 
