@@ -17,11 +17,11 @@ File lockFile = File(".watcher.lock");
 // watch /etc/apache2/logs/domlogs/*
 watchDestination(String path) async {
   String absolutePath = p.absolute(path);
-  logger.info("watching2 $absolutePath");
+  logger.info("watchin $absolutePath");
   var watcher = DirectoryWatcher(absolutePath);
   var started = false;
-  watcher.events.listen(SingularProcess('watcher', (event) async {
-    logger.fine("path: $path event: ${event.toString()}");
+  final watcherHandler = SingularProcess('watcher', (event) async {
+    logger.fine("caught: $path event: ${event.toString()}");
     final eventPath = event.path;
     if (eventPath.endsWith('~') ||
         eventPath.endsWith(".swp") ||
@@ -33,7 +33,12 @@ watchDestination(String path) async {
       return;
     }
 
-    await processQueue({eventPath: true});
+    await lock.acquire();
+    try {
+      await processQueue({eventPath: true});
+    } finally {
+      lock.release();
+    }
     // await lock.acquire();
     // if (!waitingFile.containsKey(eventPath)) {
     //   waitingFile[eventPath] = true;
@@ -45,7 +50,9 @@ watchDestination(String path) async {
     // }
     // await lock.release();
     //if file pattern
-  }).handler);
+  });
+
+  watcher.events.listen(watcherHandler.handle);
 }
 
 processQueue(Map<String, bool> waitingFile) async {

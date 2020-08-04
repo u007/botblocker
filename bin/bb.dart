@@ -4,7 +4,9 @@ import 'package:botblocker/sniffer/file.dart';
 import '../lib/watcher.dart';
 import '../lib/util/logging.dart';
 
+final version = "v1.0.2";
 main(List<String> args) async {
+  print("bb($version)");
   setupLogger();
   // await watchDestination('/etc/apache2/logs/domlogs/');
   String cmd = args.length > 0 ? args[0] : '';
