@@ -4,7 +4,7 @@ import 'package:botblocker/sniffer/file.dart';
 import '../lib/watcher.dart';
 import '../lib/util/logging.dart';
 
-final version = "v1.0.5";
+final version = "v1.0.6";
 main(List<String> args) async {
   print("bb($version)");
   setupLogger();

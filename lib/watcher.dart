@@ -11,6 +11,7 @@ import 'dart:io';
 import './sniffer/file.dart';
 import './sniffer.dart';
 import 'package:mutex/mutex.dart';
+import 'package:colorize/colorize.dart';
 
 Mutex lock = Mutex();
 File lockFile = File(".watcher.lock");
@@ -22,16 +23,18 @@ ReceivePort mainReceiver = ReceivePort();
 // watch /etc/apache2/logs/domlogs/*
 watchDestination(String path) async {
   String absolutePath = p.absolute(path);
-  logger.info("watching $absolutePath");
+  logInfo("watching $absolutePath");
   var watcher = DirectoryWatcher(absolutePath);
 
   SendPort queueReceiver;
   mainReceiver.listen((data) {
     if (data is SendPort) {
-      logger.info('watchReceiver: init sendport');
+      logInfo('watchReceiver: mainReceiver received sendport');
       queueReceiver = data;
+      // queueReceiver.send('queue');
+      // queueReceiver.send('modify:/usr/local/apache/domlogs/upa.com.my');
     } else {
-      logger.info('watchReceiver: received: $data');
+      logInfo('watchReceiver: mainReceiver received: $data');
     }
   });
 
@@ -39,7 +42,7 @@ watchDestination(String path) async {
       await Isolate.spawn(watchIsolate, WatchInit(mainReceiver.sendPort));
   // queueReceiver.send('queue');
   // final watcherHandler = SingularProcess('watcher', (event) async {
-  //   logger.fine("caught: $path event: ${event.toString()}");
+  //   logFine("caught: $path event: ${event.toString()}");
   //   final eventPath = event.path;
   //   final eventType = event.type;
   //   if (eventPath.endsWith('~') ||
@@ -54,24 +57,24 @@ watchDestination(String path) async {
 
   //   queueReceiver.send('$eventType:$eventPath');
   // });
-  Timer.periodic(Duration(seconds: 10), (Timer t) {
-    logger.info('watchDestination: run...');
-    if (queueReceiver == null) {
-      logger.info("watchDestination: queueReceiver not ready");
-      return;
-    }
-    // await receiverMutex.acquire();
-    try {
-      queueReceiver.send('queue');
-    } catch (err, stack) {
-      logger.info('error processQueue: $err | $stack');
-    } finally {
-      // await receiverMutex.release();
-    }
-  });
+  // Timer.periodic(Duration(seconds: 10), (Timer t) {
+  //   logInfo('watchDestination: run...');
+  //   if (queueReceiver == null) {
+  //     logInfo("watchDestination: queueReceiver not ready");
+  //     return;
+  //   }
+  //   // await receiverMutex.acquire();
+  //   try {
+  //     queueReceiver.send('queue');
+  //   } catch (err, stack) {
+  //     logInfo('error processQueue: $err | $stack');
+  //   } finally {
+  //     // await receiverMutex.release();
+  //   }
+  // });
   // watcher.events.listen(watcherHandler.tryHandle);
   watcher.events.listen((event) async {
-    logger.fine("caught: $path event: ${event.toString()}");
+    logFine("caught: $path event: ${event.toString()}");
     final eventPath = event.path;
     final eventType = event.type;
     if (eventPath.endsWith('~') ||
@@ -84,42 +87,46 @@ watchDestination(String path) async {
       return;
     }
     queueReceiver.send('$eventType:$eventPath');
-    logger.fine('sent: $eventType:$eventPath');
+    // logFine('sent: $eventType:$eventPath');
   });
 
-  logger.info('watcher ended.');
+  // logInfo('watcher ended.');
 }
 
 void watchIsolate(WatchInit initConfig) async {
   ReceivePort receiver = ReceivePort();
 
-  Map<String, bool> pendingQueue = {};
   receiver.listen((data) async {
-    logger.info("watchISO: $data");
+    logInfo("watchISO: received $data");
     await receiverMutex.acquire();
-    logger.finer("watchISO: starting $data");
+    logFine("watchISO: starting $data");
 
     try {
       if (data is String) {
-        if (data == 'queue') {
-          await processQueue(pendingQueue);
-          pendingQueue = {};
-          return;
-        }
+        // if (data == 'queue') {
+        //   await processQueue(pendingQueue);
+        //   pendingQueue = {};
+        //   return;
+        // }
         final event = data.split(':');
         final file = event[1];
-        if (pendingQueue.containsKey(file)) {
-          logger.info('watchISO: ignoring $file, already in queue');
-          return;
-        }
-
-        pendingQueue[file] = true;
+        // if (pendingQueue.containsKey(file)) {
+        //   logInfo('watchISO: ignoring $file, already in queue');
+        //   return;
+        // }
+        // pendingQueue[file] = true;
+        // var toProcess = <String, bool>{};
+        // toProcess[file] = true;
+        // await processQueue(toProcess);
+        await sniffLog(file, FileSnifferHandler());
+        logInfo("watchISO: sniffLog $file done.");
       } else {
-        logger.info("watchISO: unknown data: $data");
+        logInfo("watchISO: unknown data: $data");
       }
     } catch (err) {
-      logger.info('watchISO: error: $err');
+      logInfo('watchISO: error: $err');
     } finally {
+      logInfo("watchISO: receiverMutex release");
       await receiverMutex.release();
     }
     // loggerLog('[loggingIsolate] $data');
@@ -127,29 +134,40 @@ void watchIsolate(WatchInit initConfig) async {
   }); // receiver
 
   // print('watchISO: sending watcher sendport');
-  await initConfig.sendPort.send(receiver.sendPort);
+  initConfig.sendPort.send(receiver.sendPort);
 } // watchIsolate
 
-processQueue(Map<String, bool> waitingFile) async {
-  logger.fine("processQueue ${waitingFile.keys}");
-  // await lock.acquire();
-  while (waitingFile.keys.length > 0) {
-    final pendingFile = waitingFile.keys.first;
+// processQueue(Map<String, bool> waitingFile) async {
+//   logFine("processQueue ${waitingFile.keys}");
+//   // await lock.acquire();
+//   while (waitingFile.keys.length > 0) {
+//     final pendingFile = waitingFile.keys.first;
 
-    try {
-      await sniffLog(pendingFile, FileSnifferHandler());
-      waitingFile.remove(pendingFile);
-    } on FileSystemException {
-      //ignore
-      logger.fine("processQueue ignoring missing $pendingFile");
-    } catch (error, stack) {
-      logger.info(
-          "processQueue path: $pendingFile unhandled exception: $error | $stack");
-    }
-  }
-} // processQueue
+//     try {
+//       await sniffLog(pendingFile, FileSnifferHandler());
+//       waitingFile.remove(pendingFile);
+//     } on FileSystemException {
+//       //ignore
+//       logFine("processQueue ignoring missing $pendingFile");
+//     } catch (error, stack) {
+//       logInfo(
+//           "processQueue path: $pendingFile unhandled exception: $error | $stack");
+//     }
+//   }
+// } // processQueue
 
 class WatchInit {
   final SendPort sendPort;
   WatchInit(this.sendPort);
+}
+
+logInfo(String msg) {
+  print(msg);
+  logger.info(msg);
+}
+
+logFine(String msg) {
+  Colorize cStr = Colorize(msg)..lightGray();
+  print(cStr);
+  logger.fine(msg);
 }

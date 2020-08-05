@@ -35,16 +35,18 @@ const sensitiveCountLimit = [
 ];
 
 Future sniffLog(String logPath, SnifferHandler sniffHandler) async {
+  logger.info("sniffLog: $logPath");
   if (FileSystemEntity.typeSync(logPath) == FileSystemEntityType.notFound) {
     throw FileSystemException(logPath);
   }
-
+  logger.info("sniffLog: loading config for $logPath");
   Map<String, dynamic> logConfig = await sniffHandler.getLogFileConfig(logPath);
+  logger.info("sniffLog: loaded config $logConfig");
 
-  return sniffLogwithConfig(logPath, logConfig, sniffHandler);
+  return await sniffLogwithConfig(logPath, logConfig, sniffHandler);
 }
 
-sniffLogwithConfig(String logPath, Map<String, dynamic> logConfig,
+Future<void> sniffLogwithConfig(String logPath, Map<String, dynamic> logConfig,
     SnifferHandler sniffHandler) async {
   int lastLine = logConfig['lastLine'] as int;
   final String lastText = logConfig['lastText'] as String;
@@ -89,7 +91,7 @@ sniffLogwithConfig(String logPath, Map<String, dynamic> logConfig,
   // mutex required because reader execute done before finishing executing stream of last line
 
   Mutex singleLineMutex = Mutex();
-
+  Completer complete = Completer();
   await reader.listen((String line) async {
     await singleLineMutex.acquire();
     readLine = lineNo;
@@ -219,7 +221,11 @@ sniffLogwithConfig(String logPath, Map<String, dynamic> logConfig,
     } else {
       logger.fine("cancelled done");
     }
+    complete.complete();
   }, onError: (e) {
     logger.severe("Error: $logPath {$lineNo-1} ${e}");
+    complete.completeError(e);
   }, cancelOnError: true);
+
+  return complete.future;
 }
