@@ -8,7 +8,7 @@ buildbaserun:
 	docker run -d --name botblocker botblocker
 
 build:
-	echo "building exe..."
+	@echo "building exe..."
 ifeq ($(OSNAME),Linux)
 	dart2native bin/bb.dart
 else

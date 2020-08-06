@@ -9,6 +9,7 @@ import 'util/logging.dart';
 import 'package:intl/intl.dart';
 import 'package:path/path.dart';
 import './sniffer/abstract.dart';
+import 'package:colorize/colorize.dart';
 
 RegExp matchLogLine = new RegExp(
   // r"(?<ip>.*?) (?<remote_log_name>.*?) (?<userid>.*?) \[(?<date>.*?)(?= ) (?<timezone>.*?)\] \"(?<request_method>.*?) (?<path>.*?)(?<request_version> HTTP/.*)?\" (?<status>.*?) (?<length>.*?) \"(?<referrer>.*?)\" \"(?<user_agent>.*?)\" (?<session_id>.*?) (?<generation_time_micro>.*?) (?<virtual_host>.*)",
@@ -34,16 +35,16 @@ const sensitiveCountLimit = [
   {'text': '!wp-config.php', 'triggerCount': 1},
 ];
 
-Future sniffLog(String logPath, SnifferHandler sniffHandler) async {
-  logger.info("sniffLog: $logPath");
+sniffLog(String logPath, SnifferHandler sniffHandler) async {
+  logInfo("sniffLog: $logPath");
   if (FileSystemEntity.typeSync(logPath) == FileSystemEntityType.notFound) {
     throw FileSystemException(logPath);
   }
-  logger.info("sniffLog: loading config for $logPath");
+  logInfo("sniffLog: loading config for $logPath");
   Map<String, dynamic> logConfig = await sniffHandler.getLogFileConfig(logPath);
-  logger.info("sniffLog: loaded config $logConfig");
-
-  return await sniffLogwithConfig(logPath, logConfig, sniffHandler);
+  logInfo("sniffLog: starting: $logPath | $logConfig");
+  await sniffLogwithConfig(logPath, logConfig, sniffHandler);
+  logInfo("sniffLog: sniffed: $logPath.");
 }
 
 Future<void> sniffLogwithConfig(String logPath, Map<String, dynamic> logConfig,
@@ -51,14 +52,13 @@ Future<void> sniffLogwithConfig(String logPath, Map<String, dynamic> logConfig,
   int lastLine = logConfig['lastLine'] as int;
   final String lastText = logConfig['lastText'] as String;
 
-  logger.info("path: $logPath, lastLine: $lastLine: $lastText");
+  logInfo("path: $logPath, lastLine: $lastLine: $lastText");
   var file = File(logPath);
   String logFileName = basename(logPath);
   List<ViolationRule> rules = violationConfig.containsKey(logFileName)
       ? violationConfig[logFileName]
       : [];
   rules.addAll(violationConfig.containsKey('*') ? violationConfig['*'] : []);
-  //TODO cancel stream for better performance
   // Read file
   // var contents = StringBuffer();
   var contentStream = file.openRead();
@@ -73,38 +73,33 @@ Future<void> sniffLogwithConfig(String logPath, Map<String, dynamic> logConfig,
   contentStream = file.openRead();
   reader = contentStream.transform(Utf8Decoder()).transform(LineSplitter());
 
-  logger.info("sniffLog($logPath) line count ${lineCount}...");
+  logInfo("sniffLog($logPath) line count ${lineCount}...");
   if (lineCount < lastLine) {
-    logger.info("log file shorter than last line $lineCount vs $lastLine");
+    logInfo("log file shorter than last line $lineCount vs $lastLine");
     lineNo = 1;
     lastLine = 0;
   } else {
     if (lastLine > 0) {
-      logger.info("sniffLog($logPath) Skipping to $lastLine...");
+      logInfo("sniffLog($logPath) Skipping to $lastLine...");
       reader = reader.skip(lastLine - 1);
       lineNo = lastLine; //next line is next line
     }
   }
 
-  logger.fine("sniffLog($logPath) listening line from ${lineNo}...");
+  logFine("sniffLog($logPath) listening line from ${lineNo}...");
   int readLine = 0;
   // mutex required because reader execute done before finishing executing stream of last line
 
-  Mutex singleLineMutex = Mutex();
-  Completer complete = Completer();
-  await reader.listen((String line) async {
-    await singleLineMutex.acquire();
-    readLine = lineNo;
+  await for (var line in reader) {
     if (cancelThis) {
-      await singleLineMutex.release();
-      logger.finer("already cancelled");
-      return;
+      logFiner("already cancelled");
+      break;
     }
-    // logger.info("sniffLog($logPath:$lineNo) line: $line");
+    logFine("sniffLog($logPath) ${lineNo}: $line");
     if (lastLine > 0 && lineNo == lastLine) {
       if (lastText != null) {
         if (!line.startsWith(lastText)) {
-          logger.info(
+          logInfo(
               "sniffLog($logPath:$lineNo) Line($lastLine) mismatch, expecting: \"$lastText\", found: $line");
           cancelThis = true;
           // reader.cancel();
@@ -112,30 +107,28 @@ Future<void> sniffLogwithConfig(String logPath, Map<String, dynamic> logConfig,
           //rerun from start
           logConfig['lastLine'] = 0;
           logConfig['lastText'] = null;
-          await singleLineMutex.release();
+          // starts from beginning
           var res = await sniffLogwithConfig(logPath, logConfig, sniffHandler);
           return res;
         }
       }
 
-      logger.info("sniffLog($logPath:$lineNo) encounter lastline $lastLine");
-      // logger.finer("Skipping last line $lineNo to $lastLine");
+      logInfo("sniffLog($logPath:$lineNo) encounter lastline $lastLine");
+      // logFiner("Skipping last line $lineNo to $lastLine");
       lineNo += 1;
-      await singleLineMutex.release();
-      return; // start with next line
+      continue; // start with next line
     }
 
-    logger.finer("Reading $lineNo: $line");
-    // logger.fine("read:$lineNo: $line");
+    logFiner("sniffLog($logPath) Reading $lineNo: $line");
+    // logFine("read:$lineNo: $line");
     RegExpMatch match = matchLogLine.firstMatch(line);
     if (match == null) {
-      logger.info("nothing matched on line: $lineNo: $line");
+      logInfo("nothing matched on line: $lineNo: $line");
       lineNo += 1;
-      await singleLineMutex.release();
-      return;
+      continue; //skip
     }
     String ip, logDate, method, path, agent = '';
-    // logger.fine("match: ${match.groupNames.toString()} ");
+    // logFine("match: ${match.groupNames.toString()} ");
     ip = match.namedGroup('ip');
     logDate = match.namedGroup('date');
     method = match.namedGroup('method');
@@ -145,7 +138,7 @@ Future<void> sniffLogwithConfig(String logPath, Map<String, dynamic> logConfig,
     //30/Nov/2019:11:33:25
     DateFormat format = new DateFormat("dd/MMM/yyyy:hh:mm:ss");
     DateTime date = format.parse(logDate);
-    logger.fine(
+    logFine(
         "sniffLog($logPath:$lineNo) ip: $ip, date: $date method: $method path: $path agent: $agent");
 
     // check if path matches any of the banned list and violated within the hour
@@ -153,7 +146,7 @@ Future<void> sniffLogwithConfig(String logPath, Map<String, dynamic> logConfig,
     for (ViolationRule rule in rules) {
       bool bFound = false;
       if (rule.exact && rule.url == path) {
-        logger.fine(
+        logFine(
             "sniffLog($logPath:$lineNo) ip: $ip, date: $date method: $method found exact: $rule");
         bFound = true;
       } else if (!rule.exact) {
@@ -165,12 +158,12 @@ Future<void> sniffLogwithConfig(String logPath, Map<String, dynamic> logConfig,
 
       CSFBlackList bHandler = CSFBlackList(test: false);
       if (await bHandler.isBannedIP(ip)) {
-        logger.info("sniffLog($logPath:$lineNo) banned ip: $ip, skipping");
+        logInfo("sniffLog($logPath:$lineNo) banned ip: $ip, skipping");
         continue;
       }
 
       if (await bHandler.isWhiteListedIP(ip)) {
-        logger.info("sniffLog($logPath:$lineNo) whitelisted ip: $ip, skipping");
+        logInfo("sniffLog($logPath:$lineNo) whitelisted ip: $ip, skipping");
         continue;
       }
 
@@ -179,53 +172,63 @@ Future<void> sniffLogwithConfig(String logPath, Map<String, dynamic> logConfig,
         await bHandler.storeAndBlockIP(ip, date, logFileName, path,
             reason: 'botblock ${rule.id}');
       } else {
-        logger.info(
+        logInfo(
             "sniffLog($logPath:$lineNo) ip: $ip, date: $date method: $method found $rule");
         ViolationInfo info =
             await bHandler.loadIPViolation(ip, logFileName, path);
-        // logger.fine(
+        // logFine(
         //     "sniffLog($logPath:$lineNo) ip: $ip, date: $date method: $method loaded");
         int violatedCount = await info.countViolation(rule.duration) + 1;
         if (violatedCount >= rule.count) {
-          logger.info(
+          logInfo(
               "sniffLog($logPath:$lineNo) ip: $ip, date: $date method: $method violated count ${rule.count}, violatedCount: $violatedCount - banning!");
           await bHandler.banIP(ip, reason: 'botblock ${rule.id}');
         } else {
-          logger.fine(
+          logFine(
               "sniffLog($logPath:$lineNo) ip: $ip, date: $date method: $method violated count ${rule.count}, violatedCount: $violatedCount - counting...");
         }
 
         await bHandler.storeViolation(ip, date, logFileName, path,
             count: violatedCount);
       }
-    }
+    } //each rules
 
     readLastLine = line;
 
     newLine += 1;
     lineNo += 1;
-    await singleLineMutex.release();
-    // logger.fine("words: ${words.length}");
-  }, onDone: () async {
-    if (!cancelThis) {
-      logger.info("done $logPath ${lineNo - 1} readed: $readLine");
-      if (newLine > 0) {
-        logger.info(
-            "completed ${lineNo - 1} line(s) with $newLine new lines on $logPath");
-        await sniffHandler.saveLogFileConfig(logPath, lineNo - 1, readLastLine);
-        logger.info(
-            "saved ${lineNo - 1} line(s) with $newLine new lines on $logPath");
-      } else {
-        logger.info("nothing changed on $logPath");
-      }
-    } else {
-      logger.fine("cancelled done");
-    }
-    complete.complete();
-  }, onError: (e) {
-    logger.severe("Error: $logPath {$lineNo-1} ${e}");
-    complete.completeError(e);
-  }, cancelOnError: true);
+  } //each line
 
-  return complete.future;
+  if (!cancelThis) {
+    logInfo("done $logPath ${lineNo - 1} readed: $readLine");
+    if (newLine > 0) {
+      logInfo(
+          "completed ${lineNo - 1} line(s) with $newLine new lines on $logPath");
+      await sniffHandler.saveLogFileConfig(logPath, lineNo - 1, readLastLine);
+      logInfo(
+          "saved ${lineNo - 1} line(s) with $newLine new lines on $logPath");
+    } else {
+      logInfo("nothing changed on $logPath");
+    }
+  } else {
+    logFine("cancelled done");
+  }
+  logFine("sniffLog($logPath) ended.");
+}
+
+logInfo(String msg) {
+  print('*' + msg);
+  logger.info(msg);
+}
+
+logFine(String msg) {
+  Colorize cStr = Colorize('*' + msg)..lightGray();
+  print(cStr);
+  logger.fine(msg);
+}
+
+logFiner(String msg) {
+  Colorize cStr = Colorize('*' + msg)..darkGray();
+  print(cStr);
+  logger.finer(msg);
 }
