@@ -4,7 +4,7 @@ import 'package:botblocker/sniffer/file.dart';
 import '../lib/watcher.dart';
 import '../lib/util/logging.dart';
 
-final version = "v1.0.6";
+final version = "v1.1.0";
 main(List<String> args) async {
   print("bb($version)");
   setupLogger();
@@ -66,6 +66,8 @@ main(List<String> args) async {
     case 'help':
       output(
           "bb.exe reset-ip / reset-log / block / unblock / watch / undo-blocks");
+      output(
+          'for more stable watcher, please install inotifywait https://github.com/inotify-tools/inotify-tools/wiki');
       break;
 
     default:

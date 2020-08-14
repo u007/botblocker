@@ -1,8 +1,10 @@
 // import 'dart:async';
 import 'dart:async';
+import 'dart:convert';
 import 'dart:isolate';
 
 import 'package:botblocker/util/lock.dart';
+import 'package:process_run/which.dart';
 import 'package:watcher/watcher.dart';
 import 'package:path/path.dart' as p;
 import 'util/logging.dart';
@@ -19,9 +21,97 @@ String runningPath = '';
 final receiverMutex = Mutex();
 ReceivePort mainReceiver = ReceivePort();
 
+String iNotifyWaitPath = '';
+
+watchDestination(String path) async {
+  if (Platform.isMacOS || Platform.isLinux) {
+    logInfo("detecting inotifywait...");
+    iNotifyWaitPath = whichSync('inotifywait');
+  }
+
+  if (iNotifyWaitPath == null || iNotifyWaitPath.isEmpty) {
+    logInfo(
+        "Missing iNotifyWait, falling back to watcher (not stable). for more information, use help");
+    return watchDestinationViaWatcher(path);
+  }
+
+  SendPort queueReceiver;
+  String absolutePath = p.absolute(path);
+  final processArgs = '''-r -m -e modify $absolutePath'''.split(' ').toList();
+
+  mainReceiver.listen((data) async {
+    if (data is SendPort) {
+      logInfo('watchReceiver: mainReceiver received sendport');
+      queueReceiver = data;
+
+      logInfo("$iNotifyWaitPath ${processArgs.join(' ')}");
+      await Process.start(iNotifyWaitPath, processArgs,
+              includeParentEnvironment: true)
+          .then((Process proc) {
+        logFine("inotifywait started");
+        proc.stdout.transform(utf8.decoder)
+            // .transform(inotifySpaceStreamer)
+            .listen((data) {
+          String line = data.substring(0, data.length - 1);
+          // logFine("inotifywait-out: $line");
+          List<String> updates = line.split(' ');
+          if (updates.length < 3) {
+            logSevere('Invalid notify event: $data');
+            return;
+          }
+          final eventPath = updates[0] + updates[2];
+          final eventType = updates[1];
+          if (eventPath.endsWith('~') ||
+              eventPath.endsWith(".swp") ||
+              eventPath.endsWith(".swpx") ||
+              eventPath.endsWith(".bkup") ||
+              eventPath.endsWith(".bk") ||
+              eventPath.endsWith(".lock") ||
+              eventPath.endsWith("bytes_log")) {
+            logFine("inotifywait-out: ignored: $line");
+            return;
+          }
+          logFine("inotifywait-out: $line");
+
+          queueReceiver.send('$eventType:$eventPath');
+        });
+        proc.stderr.transform(utf8.decoder).listen((data) {
+          String line = data.substring(0, data.length - 1);
+          logFine("inotifywait-error: $line");
+        });
+        proc.exitCode.then((exitCode) {
+          logInfo('inotifywait-exit: $exitCode');
+          exit(exitCode);
+        });
+      });
+      // queueReceiver.send('queue');
+      // queueReceiver.send('modify:/usr/local/apache/domlogs/upa.com.my');
+    } else {
+      logInfo('watchReceiver: mainReceiver received: $data');
+    }
+  });
+
+  Isolate watchIso =
+      await Isolate.spawn(watchIsolate, WatchInit(mainReceiver.sendPort));
+
+  // final inotifySpaceStreamer =
+  //     new StreamTransformer.fromHandlers(handleData: (data, sink) {
+  //   print("new $data | $sink");
+  //   sink.add(data);
+  // });
+
+  /*
+  inotifywait -r -m -e modify /usr/local/apache/domlogs | 
+   while read path _ file; do 
+       echo $path$file modified
+   done*/
+
+  // logInfo('watcher ended.');
+}
+
 /// make a watcher for all domain logs in a directory
 // watch /etc/apache2/logs/domlogs/*
-watchDestination(String path) async {
+watchDestinationViaWatcher(String path) async {
   String absolutePath = p.absolute(path);
   logInfo("watching $absolutePath");
   var watcher = DirectoryWatcher(absolutePath);
@@ -167,7 +257,13 @@ logInfo(String msg) {
 }
 
 logFine(String msg) {
-  Colorize cStr = Colorize(msg)..lightGray();
-  print(cStr);
+  // Colorize cStr = Colorize(msg)..lightGray();
+  // print(cStr);
   logger.fine(msg);
+}
+
+logSevere(String msg) {
+  // Colorize cStr = Colorize(msg)..red();
+  // print(cStr);
+  logger.severe(msg);
 }
