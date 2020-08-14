@@ -49,31 +49,32 @@ watchDestination(String path) async {
               includeParentEnvironment: true)
           .then((Process proc) {
         logFine("inotifywait started");
-        proc.stdout.transform(utf8.decoder)
-            // .transform(inotifySpaceStreamer)
-            .listen((data) {
-          String line = data.substring(0, data.length - 1);
-          // logFine("inotifywait-out: $line");
-          List<String> updates = line.split(' ');
-          if (updates.length < 3) {
-            logSevere('Invalid notify event: $data');
-            return;
-          }
-          final eventPath = updates[0] + updates[2];
-          final eventType = updates[1];
-          if (eventPath.endsWith('~') ||
-              eventPath.endsWith(".swp") ||
-              eventPath.endsWith(".swpx") ||
-              eventPath.endsWith(".bkup") ||
-              eventPath.endsWith(".bk") ||
-              eventPath.endsWith(".lock") ||
-              eventPath.endsWith("bytes_log")) {
-            logFine("inotifywait-out: ignored: $line");
-            return;
-          }
-          logFine("inotifywait-out: $line");
+        proc.stdout.transform(utf8.decoder).listen((data) {
+          List<String> lines = data.substring(0, data.length - 1).split('\n');
+          for (var c = 0; c < lines.length; c++) {
+            String line = lines[c];
+            // logFine("inotifywait-out: $line");
+            List<String> updates = line.split(' ');
+            if (updates.length < 3) {
+              logSevere('Invalid notify event: $line | $updates | all: $lines');
+              return;
+            }
+            final eventPath = updates[0] + updates[2];
+            final eventType = updates[1];
+            if (eventPath.endsWith('~') ||
+                eventPath.endsWith(".swp") ||
+                eventPath.endsWith(".swpx") ||
+                eventPath.endsWith(".bkup") ||
+                eventPath.endsWith(".bk") ||
+                eventPath.endsWith(".lock") ||
+                eventPath.endsWith("bytes_log")) {
+              logFine("inotifywait-out: ignored: $line");
+              continue;
+            }
+            logFine("inotifywait-out: $line");
 
-          queueReceiver.send('$eventType:$eventPath');
+            queueReceiver.send('$eventType:$eventPath');
+          } //each lines
         });
         proc.stderr.transform(utf8.decoder).listen((data) {
           String line = data.substring(0, data.length - 1);
