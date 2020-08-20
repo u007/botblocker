@@ -15,7 +15,7 @@ class CSFBlackList extends BlackListHandler {
   int version = 0;
   bool test = false;
   CSFBlackList(
-      {this.violationPath = ".data/ip", this.csfPath = "", this.test}) {
+      {this.violationPath = ".data/ip", this.csfPath = "", this.test = false}) {
     ipSaver = IPFileSaver();
   }
 
