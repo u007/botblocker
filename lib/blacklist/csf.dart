@@ -222,9 +222,14 @@ class CSFBlackList extends BlackListHandler {
     }
     Completer c = new Completer<String>();
     if (csfPath == "") {
-      csfPath = whichSync('csf');
-      if (csfPath == null) {
-        throw "Missing csf";
+      final filePath = File('/usr/sbin/csf');
+      if (filePath.existsSync()) {
+        csfPath = '/usr/sbin/csf';
+      } else {
+        csfPath = whichSync('csf');
+        if (csfPath == null) {
+          throw "Missing csf";
+        }
       }
     }
 
