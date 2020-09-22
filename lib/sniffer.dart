@@ -181,11 +181,11 @@ Future<void> sniffLogwithConfig(String logPath, Map<String, dynamic> logConfig,
         int violatedCount = await info.countViolation(rule.duration) + 1;
         if (violatedCount >= rule.count) {
           logInfo(
-              "sniffLog($logPath:$lineNo) ip: $ip, date: $date method: $method violated count ${rule.count}, violatedCount: $violatedCount - banning!");
+              "sniffLog($logPath:$lineNo) ip: $ip, date: $date method: $method violate rule ${rule.count}, violatedCount: $violatedCount - banning!");
           await bHandler.banIP(ip, reason: 'botblock ${rule.id}');
         } else {
           logFine(
-              "sniffLog($logPath:$lineNo) ip: $ip, date: $date method: $method violated count ${rule.count}, violatedCount: $violatedCount - counting...");
+              "sniffLog($logPath:$lineNo) ip: $ip, date: $date method: $method violate rule ${rule.count}, violatedCount: $violatedCount - counting...");
         }
 
         await bHandler.storeViolation(ip, date, logFileName, path,
