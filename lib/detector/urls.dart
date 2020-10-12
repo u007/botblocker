@@ -23,12 +23,12 @@ class ViolationRule {
 }
 
 final Map<String, List<ViolationRule>> violationConfig = {
-  'apache.log': [ViolationRule('wp-login-apache', 'wp-login.php', count: 5)],
+  'apache.log': [ViolationRule('wp-login-apache', 'wp-login.php', count: 4)],
   '*': [
-    ViolationRule('wp-login-all', 'wp-login.php', count: 5),
+    ViolationRule('wp-login-all', 'wp-login.php', count: 4),
     ViolationRule('~wp-config-all', '~wp-config.php', count: 1),
     ViolationRule('xmlrpc-all', 'xmlrpc.php',
-        count: 7, duration: Duration(minutes: 10))
+        count: 2, duration: Duration(minutes: 10))
   ],
   // '*': [ViolationRule('phpmyadmin/', count: 5)] //TODO
 };
